@@ -10,7 +10,6 @@ export default function GuestLayout({ children }) {
                 backgroundImage: `url(${bgImage.src || bgImage})`,
             }}
         >
-            {/* Overlay for better readability */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-[1px]"></div>
             
             <div className="relative w-full max-w-md">

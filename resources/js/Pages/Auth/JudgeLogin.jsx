@@ -47,12 +47,12 @@ export default function Login({ status, canResetPassword }) {
                         autoComplete="username"
                         isFocused={true}
                         onChange={(e) => setData('email', e.target.value)}
-                        placeholder="Enter your username"
+                        placeholder="Enter judge username"
                     />
                     <InputError message={errors.email} className="mt-2 text-white drop-shadow-sm" />
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-4 hidden">
                     <InputLabel 
                         htmlFor="password" 
                         value="Password" 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\admin;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class AdminController extends Controller
 {
@@ -12,7 +13,6 @@ class AdminController extends Controller
      */
     public function index()
     {
-        //
     }
 
     /**

@@ -5,6 +5,17 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+
+Route::get('/admin', function() {
+    return Inertia::render('Auth/Login');
+})->name('admin.login');
+
+
+Route::get('/judge', function() {
+    return Inertia::render('Auth/JudgeLogin');
+})->name('judge.login');
+
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),

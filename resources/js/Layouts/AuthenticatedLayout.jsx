@@ -55,8 +55,8 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
 
                                     
                                     <SidebarLink
-                                        href={route('profile.edit')}
-                                        active={route().current('profile.edit')}
+                                        href={route('admin.contestant')}
+                                        active={route().current('admin.contestant')}
                                     >
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <FaPeopleGroup size={18} />
@@ -65,8 +65,8 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                     </SidebarLink>
 
                                     <SidebarLink
-                                        href={route('profile.edit')}
-                                        active={route().current('profile.edit')}
+                                        href={route('admin.CPR')}
+                                        active={route().current('admin.CPR')}
                                     >
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <FaPeopleGroup size={18} />
@@ -85,8 +85,8 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                     </SidebarLink>
 
                                     <SidebarLink
-                                        href={route('profile.edit')}
-                                        active={route().current('profile.edit')}
+                                        href={route('admin.archive')}
+                                        active={route().current('admin.archive')}
                                     >
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <FaFileArchive size={18} />

@@ -36,13 +36,25 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/AdminDashboard');
     })->name('admin.dashboard');
 
+    Route::get('/criteria', function () {
+        return Inertia::render('Admin/CriteriaDashboard');
+    })->name('admin.criteria');
+
+    Route::get('/contestant', function () {
+        return Inertia::render('Admin/ContestantDashboard');
+    })->name('admin.contestant');
+
+    Route::get('/contestant/perRound', function () {
+        return Inertia::render('Admin/CPRDashboard');
+    })->name('admin.CPR');
+
     Route::get('/users', function () {
         return Inertia::render('Admin/UserSection');
     })->name('admin.users');
 
-    Route::get('/criteria', function () {
-        return Inertia::render('Admin/CriteriaDashboard');
-    })->name('admin.criteria');
+    Route::get('/archived/events', function () {
+        return Inertia::render('Admin/ArchiveDashboard');
+    })->name('admin.archive');
 
     Route::get('/getUsers', [PermissionController::class, 'getUser']);
 

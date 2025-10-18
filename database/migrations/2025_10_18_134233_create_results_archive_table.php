@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('actives', function (Blueprint $table) {
+        Schema::create('results_archive', function (Blueprint $table) {
             $table->id();
-            $table->integer('round_no');
             $table->timestamps();
         });
     }
@@ -23,6 +22,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('actives');
+        Schema::dropIfExists('results_archive');
     }
 };

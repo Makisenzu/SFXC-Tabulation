@@ -8,14 +8,18 @@ class Round extends Model
 {
     protected $fillable = [
         'contestant_id',
-        'round_id'
+        'active_id'
     ];
 
-    public function contenstant() {
+    public function contestant() {
         return $this->belongsTo(Contestant::class);
     }
 
     public function active() {
         return $this->belongsTo(Active::class);
+    }
+
+    public function tabulations() {
+        return $this->hasMany(Tabulation::class);
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Criteria extends Model
 {
     protected $fillable = [
-        'round_no',
+        'active_id',
         'criteria_desc',
         'definition',
         'percentage',
@@ -15,7 +15,11 @@ class Criteria extends Model
         'is_active',
     ];
 
-    public function roundNumber() {
+    public function active() {
         return $this->belongsTo(Active::class);
+    }
+
+    public function tabulations () {
+        return $this->hasMany(Tabulation::class);
     }
 }

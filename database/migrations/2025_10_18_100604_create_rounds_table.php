@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('rounds', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contestant_id')->constrained('contestants')->cascadeOnDelete();
-            $table->foreignId('round_id')->constrained('actives')->cascadeOnDelete();
+            $table->foreignId('active_id')->constrained('actives')->cascadeOnDelete();
             $table->timestamps();
         });
     }

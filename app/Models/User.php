@@ -21,6 +21,7 @@ class User extends Authenticatable
         'role_id',
         'username',
         'password',
+        'is_active'
     ];
 
     /**
@@ -48,5 +49,9 @@ class User extends Authenticatable
 
     public function role() {
         return $this->belongsTo(Role::class);
+    }
+
+    public function tabulations() {
+        return $this->hasMany(Tabulation::class);
     }
 }

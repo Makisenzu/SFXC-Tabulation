@@ -13,6 +13,7 @@ return new class extends Migration
     {
         Schema::create('contestants', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
             $table->string('contestant_name');
             $table->string('photo');
             $table->integer('sequence_no');

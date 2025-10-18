@@ -4,19 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Contestant extends Model
+class ResultArchive extends Model
 {
     protected $fillable = [
         'event_id',
-        'contestant_name',
-        'photo',
-        'sequence_no',
-        'is_active'
+        'final_results',
+        'contestant_rankings',
+        'notes',
+        'archived_at',
     ];
-
-    public function rounds() {
-        return $this->hasMany(Round::class);
-    }
 
     public function event() {
         return $this->belongsTo(Event::class);

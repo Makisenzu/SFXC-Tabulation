@@ -13,7 +13,9 @@ return new class extends Migration
     {
         Schema::create('actives', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
             $table->integer('round_no');
+            $table->integer('is_active')->default(1);
             $table->timestamps();
         });
     }

@@ -17,4 +17,8 @@ class Active extends Model
     public function rounds() {
         return $this->hasMany(Round::class);
     }
+
+    public function event() {
+        return $this->belongsTo(Event::class);
+    }
 }

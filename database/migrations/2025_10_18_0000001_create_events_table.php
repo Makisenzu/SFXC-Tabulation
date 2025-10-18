@@ -11,13 +11,14 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('results_archive', function (Blueprint $table) {
+        Schema::create('events', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
-            $table->json('final_results');
-            $table->json('contestant_rankings');
-            $table->text('notes')->nullable();
-            $table->timestamp('archived_at');
+            $table->string('event_name');
+            $table->string('event_type');
+            $table->text('description')->nullable();
+            $table->date('event_date');
+            $table->integer('is_active')->default(1);
+            $table->integer('is_archived')->default(0);
             $table->timestamps();
         });
     }
@@ -27,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('results_archive');
+        Schema::dropIfExists('events');
     }
 };

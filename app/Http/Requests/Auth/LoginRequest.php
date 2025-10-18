@@ -5,9 +5,11 @@ namespace App\Http\Requests\Auth;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
 
 class LoginRequest extends FormRequest
 {
@@ -29,6 +31,7 @@ class LoginRequest extends FormRequest
         return [
             'username' => ['required', 'string'],
             'password' => ['required', 'string'],
+            'login_type' => ['sometimes', 'string'],
         ];
     }
 
@@ -41,18 +44,80 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt(
-            $this->only('username', 'password'), 
-            $this->boolean('remember')
-        )) {
-            RateLimiter::hit($this->throttleKey());
+        $credentials = $this->only('username', 'password');
+        $loginType = $this->input('login_type');
+        
+        if ($loginType === 'judge') {
+            $this->authenticateJudge($credentials);
+        } else {
+            $this->authenticateAdmin($credentials);
+        }
 
+        RateLimiter::clear($this->throttleKey());
+    }
+
+    /**
+     * Handle judge authentication with static password
+     */
+    protected function authenticateJudge(array $credentials): void
+    {
+        $staticPassword = '12345678';
+        
+        if ($credentials['password'] !== $staticPassword) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'Invalid judge credentials',
+            ]);
+        }
+
+        $user = User::where('username', $credentials['username'])
+                    ->with('role')
+                    ->first();
+
+        if (!$user) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'Judge account not found',
+            ]);
+        }
+
+        if ($user->is_active !== 1) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'This judge is not available',
+            ]);
+        }
+
+        if ($user->role->role_name !== 'Judge') {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'This account is not authorized as judge',
+            ]);
+        }
+
+        Auth::login($user, $this->boolean('remember'));
+    }
+
+    /**
+     * Handle regular admin authentication with database password
+     */
+    protected function authenticateAdmin(array $credentials): void
+    {
+        if (! Auth::attempt($credentials, $this->boolean('remember'))) {
+            RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'username' => __('auth.failed'),
             ]);
         }
 
-        RateLimiter::clear($this->throttleKey());
+        $user = Auth::user();
+        if ($user->is_active !== 1) {
+            Auth::logout();
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'This account is not active',
+            ]);
+        }
     }
 
     /**

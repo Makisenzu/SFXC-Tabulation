@@ -11,7 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('active', function (Blueprint $table) {
+        Schema::create('actives', function (Blueprint $table) {
             $table->id();
             $table->integer('round_no');
             $table->timestamps();

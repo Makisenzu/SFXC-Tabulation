@@ -9,4 +9,8 @@ class Active extends Model
     protected $fillable = [
         'round_no'
     ];
+
+    public function criterias(){
+        return $this->hasMany(Criteria::class);
+    }
 }

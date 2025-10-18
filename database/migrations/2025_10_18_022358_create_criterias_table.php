@@ -11,11 +11,13 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('contestants', function (Blueprint $table) {
+        Schema::create('criterias', function (Blueprint $table) {
             $table->id();
-            $table->string('contestant_name');
-            $table->string('photo');
-            $table->integer('sequence_no');
+            $table->foreignId('round_no')->constrained('actives')->cascadeOnDelete();
+            $table->string('criteria_desc');
+            $table->string('definition')->nullable();
+            $table->integer('percentage');
+            $table->integer('max_percentage');
             $table->integer('is_active')->default('1');
             $table->timestamps();
         });
@@ -26,6 +28,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('contestants');
+        Schema::dropIfExists('criterias');
     }
 };

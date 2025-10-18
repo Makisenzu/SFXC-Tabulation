@@ -75,8 +75,8 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                     </SidebarLink>
 
                                     <SidebarLink
-                                        href={route('profile.edit')}
-                                        active={route().current('profile.edit')}
+                                        href={route('admin.users')}
+                                        active={route().current('admin.users')}
                                     >
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <MdAdminPanelSettings size={18} />

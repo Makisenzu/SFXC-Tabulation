@@ -2,17 +2,35 @@
 
 namespace App\Http\Controllers\admin;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
+use Exception;
+use App\Models\User;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 
 class AdminController extends Controller
 {
     /**
      * Display a listing of the resource.
      */
-    public function index()
-    {
+    public function index(){
+    }
+
+    public function getUser(){
+        try {
+            $users = User::with('role')->get();
+            return response()->json([
+                'success' => true,
+                'message' => 'Retrieved data successfully',
+                'users' => $users
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get users',
+                'error' => $e->getMessage()
+            ]); 
+        }
     }
 
     /**

@@ -40,6 +40,10 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/UserSection');
     })->name('admin.users');
 
+    Route::get('/criteria', function () {
+        return Inertia::render('Admin/CriteriaDashboard');
+    })->name('admin.criteria');
+
     Route::get('/getUsers', [PermissionController::class, 'getUser']);
 
     Route::post('/add/newUser', [PermissionController::class, 'addUser']);

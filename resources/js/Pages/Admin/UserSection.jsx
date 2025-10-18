@@ -1,11 +1,8 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import UserTable from './components/UserTable';
-import { useState } from 'react';
-import { FaUsers, FaSearch, FaFilter } from 'react-icons/fa';
+import { FaUsers } from 'react-icons/fa';
 
 export default function UserSection({ auth }) {
-    const [searchTerm, setSearchTerm] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all');
 
     return (
         <AuthenticatedLayout 

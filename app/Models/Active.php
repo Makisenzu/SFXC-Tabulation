@@ -13,4 +13,8 @@ class Active extends Model
     public function criterias(){
         return $this->hasMany(Criteria::class);
     }
+
+    public function rounds() {
+        return $this->hasMany(Round::class);
+    }
 }

@@ -29,6 +29,18 @@ Route::get('/dashboard', function () {
     return Inertia::render('Dashboard');
 })->middleware(['auth', 'verified'])->name('dashboard');
 
+Route::middleware(['auth', 'role:Admin'])->group(function () {
+    Route::get('/adminDashboard', function () {
+        return Inertia::render('Admin/AdminDashboard');
+    })->name('admin.dashboard');
+});
+
+Route::middleware(['auth', 'role:Judge'])->group(function () {
+    Route::get('/tabulation/dashboard', function (){
+        return Inertia::render('Judge/JudgeDashboard');
+    })->name('judge.dashboard');
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\admin\AdminController;
+use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -39,7 +40,11 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/UserSection');
     })->name('admin.users');
 
-    Route::get('/getUsers', [AdminController::class, 'getUser']);
+    Route::get('/getUsers', [PermissionController::class, 'getUser']);
+
+    Route::post('/add/newUser', [PermissionController::class, 'addUser']);
+    Route::delete('/delete/user/{id}', [PermissionController::class, 'deleteUser']);
+    Route::patch('/edit/user/{id}', [PermissionController::class, 'updateUser']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

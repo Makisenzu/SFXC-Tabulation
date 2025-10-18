@@ -16,23 +16,6 @@ class AdminController extends Controller
     public function index(){
     }
 
-    public function getUser(){
-        try {
-            $users = User::with('role')->get();
-            return response()->json([
-                'success' => true,
-                'message' => 'Retrieved data successfully',
-                'users' => $users
-            ]);
-        } catch (Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get users',
-                'error' => $e->getMessage()
-            ]); 
-        }
-    }
-
     /**
      * Show the form for creating a new resource.
      */

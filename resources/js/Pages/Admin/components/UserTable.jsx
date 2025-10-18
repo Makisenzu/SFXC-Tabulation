@@ -209,9 +209,9 @@ export default function UserTable() {
             
             console.log('Adding user with data:', userData);
             
-            router.post('/admin/users', userData, {
+            router.post('/add/newUser', userData, {
                 onSuccess: () => {
-                    showAlert('success', `User added successfully! Username: ${username}`);
+                    showAlert('success', `${username} added successfully!`);
                     refetchUsers();
                     resolve();
                 },
@@ -236,7 +236,7 @@ export default function UserTable() {
             
             console.log('Updating user status:', userData);
             
-            router.put(`/admin/users/${editingUser.id}`, userData, {
+            router.patch(`/edit/user/${editingUser.id}`, userData, {
                 onSuccess: () => {
                     showAlert('success', 'User status updated successfully');
                     refetchUsers();
@@ -258,7 +258,7 @@ export default function UserTable() {
         );
         if (!confirmed) return;
 
-        router.delete(`/admin/users/${userId}`, {
+        router.delete(`/delete/user/${userId}`, {
             onSuccess: () => {
                 showAlert('success', 'User deleted successfully');
                 refetchUsers();

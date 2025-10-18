@@ -20,7 +20,6 @@ export default function UserSection({ auth }) {
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
 
-                    {/* User Table */}
                     <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                         <UserTable 
                             searchTerm={searchTerm}

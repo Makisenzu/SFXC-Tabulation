@@ -50,7 +50,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <MdOutlineEventNote size={18} />
                                         </div>
-                                        Criteria
+                                        Events
                                     </SidebarLink>
 
                                     
@@ -61,7 +61,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <FaPeopleGroup size={18} />
                                         </div>
-                                        Contestant
+                                        Contestants
                                     </SidebarLink>
 
                                     <SidebarLink
@@ -91,7 +91,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                         <div className="w-6 h-6 flex items-center justify-center mr-3">
                                             <FaFileArchive size={18} />
                                         </div>
-                                        Archive
+                                        Archives
                                     </SidebarLink>
 
                                     

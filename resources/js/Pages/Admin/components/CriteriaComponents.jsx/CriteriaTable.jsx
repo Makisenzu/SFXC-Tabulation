@@ -9,9 +9,9 @@ import {
     FaEye, 
     FaEyeSlash,
     FaArchive,
-    FaPercentage,
     FaClock,
-    FaHashtag
+    FaChevronDown,
+    FaChevronRight
 } from 'react-icons/fa';
 import Pagination from '@/Components/Pagination';
 import FormModal from '@/Components/FormModal';
@@ -43,6 +43,9 @@ export default function EventCriteriaTable() {
     const [editEventFormData, setEditEventFormData] = useState({});
     const [addCriteriaFormData, setAddCriteriaFormData] = useState({});
     const [editCriteriaFormData, setEditCriteriaFormData] = useState({});
+
+    // State for expanded events in criteria tab
+    const [expandedEvents, setExpandedEvents] = useState(new Set());
 
     // Fetch data based on active tab
     useEffect(() => {
@@ -110,12 +113,45 @@ export default function EventCriteriaTable() {
     const safeEvents = Array.isArray(events) ? events : [];
     const safeCriterias = Array.isArray(criterias) ? criterias : [];
 
-    // Pagination logic
-    const currentData = activeTab === 'events' ? safeEvents : safeCriterias;
-    const totalPages = Math.ceil(currentData.length / itemsPerPage);
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = currentData.slice(indexOfFirstItem, indexOfLastItem);
+    // Group criteria by event
+    const criteriaByEvent = useMemo(() => {
+        const grouped = {};
+        safeCriterias.forEach(criteria => {
+            const eventId = criteria.event_id;
+            if (!grouped[eventId]) {
+                grouped[eventId] = [];
+            }
+            grouped[eventId].push(criteria);
+        });
+        return grouped;
+    }, [safeCriterias]);
+
+    // Get events that have criteria
+    const eventsWithCriteria = useMemo(() => {
+        return safeEvents.filter(event => criteriaByEvent[event.id]?.length > 0);
+    }, [safeEvents, criteriaByEvent]);
+
+    // Toggle event expansion
+    const toggleEventExpansion = (eventId) => {
+        const newExpanded = new Set(expandedEvents);
+        if (newExpanded.has(eventId)) {
+            newExpanded.delete(eventId);
+        } else {
+            newExpanded.add(eventId);
+        }
+        setExpandedEvents(newExpanded);
+    };
+
+    // Expand all events
+    const expandAllEvents = () => {
+        const allEventIds = new Set(eventsWithCriteria.map(event => event.id));
+        setExpandedEvents(allEventIds);
+    };
+
+    // Collapse all events
+    const collapseAllEvents = () => {
+        setExpandedEvents(new Set());
+    };
 
     // Format date to Month/Day/Year with time
     const formatDateWithTime = (dateTimeString) => {
@@ -154,18 +190,9 @@ export default function EventCriteriaTable() {
         }
     };
 
-    // Get event name from active_id
-    const getEventNameFromActiveId = (activeId) => {
-        if (!activeId) return 'No Event';
-        const event = safeEvents.find(event => event.active_id === activeId || event.id === activeId);
-        return event ? event.event_name : 'Unknown Event';
-    };
-
-    // Get round number from active_id
-    const getRoundNumberFromActiveId = (activeId) => {
-        if (!activeId) return 'No Round';
-        const event = safeEvents.find(event => event.active_id === activeId || event.id === activeId);
-        return event ? `Round ${event.round_no || '1'}` : 'Unknown Round';
+    // Get round number from criteria
+    const getRoundNumberFromCriteria = (criteria) => {
+        return `Round ${criteria.valid_round || '1'}`;
     };
 
     // Event form fields
@@ -282,14 +309,13 @@ export default function EventCriteriaTable() {
     // Criteria form fields
     const addCriteriaFields = useMemo(() => ([
         {
-            name: 'active_id',
-            label: 'Valid Round',
+            name: 'event_id',
+            label: 'Event',
             type: 'select',
             options: safeEvents
                 .filter(event => event.is_active)
                 .map(event => ({
-                    value: event.active_id || event.id,
-                    // label: `${event.event_name} (Round ${event.round_no || '1'})`
+                    value: event.id,
                     label: `${event.event_name} - ${event.event_type}`
                 })),
             required: true
@@ -319,14 +345,12 @@ export default function EventCriteriaTable() {
             placeholder: 'Enter percentage (0-100)'
         },
         {
-            name: 'max_percentage',
-            label: 'Max Percentage',
+            name: 'valid_round',
+            label: 'Round Number',
             type: 'number',
             required: true,
-            min: 0,
-            max: 100,
-            step: 0.1,
-            placeholder: 'Enter max percentage (0-100)'
+            min: 1,
+            placeholder: 'Enter round number (e.g., 1, 2, 3)'
         },
         {
             name: 'is_active',
@@ -342,14 +366,14 @@ export default function EventCriteriaTable() {
 
     const editCriteriaFields = useMemo(() => ([
         {
-            name: 'active_id',
-            label: 'Valid Round',
+            name: 'event_id',
+            label: 'Event',
             type: 'select',
             options: safeEvents
                 .filter(event => event.is_active)
                 .map(event => ({
-                    value: event.active_id || event.id,
-                    label: `${event.event_name} (Round ${event.round_no || '1'})`
+                    value: event.id,
+                    label: `${event.event_name} - ${event.event_type}`
                 })),
             required: true
         },
@@ -378,14 +402,12 @@ export default function EventCriteriaTable() {
             placeholder: 'Enter percentage (0-100)'
         },
         {
-            name: 'max_percentage',
-            label: 'Max Percentage',
+            name: 'valid_round',
+            label: 'Round Number',
             type: 'number',
             required: true,
-            min: 0,
-            max: 100,
-            step: 0.1,
-            placeholder: 'Enter max percentage (0-100)'
+            min: 1,
+            placeholder: 'Enter round number'
         },
         {
             name: 'is_active',
@@ -441,11 +463,11 @@ export default function EventCriteriaTable() {
     // Modal handlers for Criteria
     const openAddCriteria = () => {
         setAddCriteriaFormData({
-            active_id: '',
+            event_id: '',
             criteria_desc: '',
             definition: '',
             percentage: '',
-            max_percentage: '',
+            valid_round: '1',
             is_active: '1'
         });
         setShowAddCriteriaModal(true);
@@ -459,11 +481,11 @@ export default function EventCriteriaTable() {
     const openEditCriteria = (criteria) => {
         setEditingCriteria(criteria);
         setEditCriteriaFormData({
-            active_id: criteria.active_id?.toString() || '',
+            event_id: criteria.event_id?.toString() || '',
             criteria_desc: criteria.criteria_desc || '',
             definition: criteria.definition || '',
             percentage: criteria.percentage?.toString() || '',
-            max_percentage: criteria.max_percentage?.toString() || '',
+            valid_round: criteria.valid_round?.toString() || '1',
             is_active: criteria.is_active?.toString() || '1'
         });
         setShowEditCriteriaModal(true);
@@ -616,7 +638,7 @@ export default function EventCriteriaTable() {
     const handleDeleteEvent = async (eventId) => {
         const confirmed = await confirmDialog(
             'Are you sure?',
-            'This will delete the event permanently!',
+            'This will delete the event and all its criteria permanently!',
             'Yes, delete it'
         );
         if (!confirmed) return;
@@ -651,12 +673,10 @@ export default function EventCriteriaTable() {
     const getStatusBadge = (isActive) => {
         return isActive ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                <FaEye className="w-3 h-3 mr-1" />
                 Active
             </span>
         ) : (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                <FaEyeSlash className="w-3 h-3 mr-1" />
                 Inactive
             </span>
         );
@@ -665,7 +685,6 @@ export default function EventCriteriaTable() {
     const getArchiveBadge = (isArchived) => {
         return isArchived ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                <FaArchive className="w-3 h-3 mr-1" />
                 Archived
             </span>
         ) : (
@@ -691,20 +710,22 @@ export default function EventCriteriaTable() {
         );
     };
 
-    const getPercentageBadge = (percentage) => {
+    // Percentage display
+    const getPercentageDisplay = (percentage) => {
         return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                <FaPercentage className="w-3 h-3 mr-1" />
-                {percentage}%
-            </span>
+            <div className="text-center">
+                <span className="text-lg font-semibold text-blue-600">
+                    {percentage}%
+                </span>
+            </div>
         );
     };
 
-    const getRoundBadge = (activeId) => {
-        const roundInfo = getRoundNumberFromActiveId(activeId);
+    // Round badge
+    const getRoundBadge = (criteria) => {
+        const roundInfo = getRoundNumberFromCriteria(criteria);
         return (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                <FaHashtag className="w-3 h-3 mr-1" />
                 {roundInfo}
             </span>
         );
@@ -789,231 +810,283 @@ export default function EventCriteriaTable() {
                                 {activeTab === 'events' ? 'Events Management' : 'Criteria Management'}
                             </h2>
                         </div>
-                        <PrimaryButton 
-                            onClick={activeTab === 'events' ? openAddEvent : openAddCriteria}
-                        >
-                            <FaPlus className="mr-2" /> 
-                            Add {activeTab === 'events' ? 'Event' : 'Criteria'}
-                        </PrimaryButton>
+                        <div className="flex items-center space-x-2">
+                            {activeTab === 'criterias' && eventsWithCriteria.length > 0 && (
+                                <>
+                                    <button
+                                        onClick={expandAllEvents}
+                                        className="inline-flex items-center px-3 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        Expand All
+                                    </button>
+                                    <button
+                                        onClick={collapseAllEvents}
+                                        className="inline-flex items-center px-3 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                    >
+                                        Collapse All
+                                    </button>
+                                </>
+                            )}
+                            <PrimaryButton 
+                                onClick={activeTab === 'events' ? openAddEvent : openAddCriteria}
+                            >
+                                <FaPlus className="mr-2" /> 
+                                Add {activeTab === 'events' ? 'Event' : 'Criteria'}
+                            </PrimaryButton>
+                        </div>
                     </div>
                 </div>
 
                 {/* Table Content */}
                 <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                {activeTab === 'events' ? (
-                                    <>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Event Details
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Type
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Date & Time
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </>
-                                ) : (
-                                    <>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Criteria
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Description
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Criteria %
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Valid Round
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </>
-                                )}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {currentItems.length === 0 ? (
+                    {activeTab === 'events' ? (
+                        // Events Table
+                        <table className="min-w-full divide-y divide-gray-200">
+                            <thead className="bg-gray-50">
                                 <tr>
-                                    <td colSpan={activeTab === 'events' ? "5" : "6"} className="px-4 py-6 text-center text-sm text-gray-500">
-                                        <div className="flex flex-col items-center justify-center">
-                                            {activeTab === 'events' ? (
-                                                <>
-                                                    <FaCalendarAlt className="w-10 h-10 text-gray-300 mb-2" />
-                                                    <p>No events found</p>
-                                                    <p className="text-xs mt-1">Get started by creating a new event</p>
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <FaListAlt className="w-10 h-10 text-gray-300 mb-2" />
-                                                    <p>No criteria found</p>
-                                                    <p className="text-xs mt-1">Get started by creating a new criteria</p>
-                                                </>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Event Details
+                                    </th>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Type
+                                    </th>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Date & Time
+                                    </th>
+                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Status
+                                    </th>
+                                    <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Actions
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="bg-white divide-y divide-gray-200">
+                                {safeEvents.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-6 text-center text-sm text-gray-500">
+                                            <div className="flex flex-col items-center justify-center">
+                                                <FaCalendarAlt className="w-10 h-10 text-gray-300 mb-2" />
+                                                <p>No events found</p>
+                                                <p className="text-xs mt-1">Get started by creating a new event</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    safeEvents.map((item) => (
+                                        <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
+                                            <td className="px-4 py-3">
+                                                <div className="flex items-center">
+                                                    <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full">
+                                                        <FaCalendarAlt className="w-4 h-4 text-blue-600" />
+                                                    </div>
+                                                    <div className="ml-3">
+                                                        <div className="text-sm font-medium text-gray-900">
+                                                            {item.event_name}
+                                                        </div>
+                                                        <div className="text-sm text-gray-500 line-clamp-1">
+                                                            {item.description || 'No description'}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {getEventTypeBadge(item.event_type)}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="text-sm text-gray-900 space-y-2">
+                                                    <div className="flex items-start space-x-2">
+                                                        <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                        <div>
+                                                            <div className="font-medium text-gray-700">Start:</div>
+                                                            <div>{formatDateWithTime(item.event_start)}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-start space-x-2">
+                                                        <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                        <div>
+                                                            <div className="font-medium text-gray-700">End:</div>
+                                                            <div>{formatDateWithTime(item.event_end)}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col space-y-1">
+                                                    {getStatusBadge(item.is_active)}
+                                                    {getArchiveBadge(item.is_archived)}
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end space-x-1">
+                                                    <button
+                                                        onClick={() => openEditEvent(item)}
+                                                        className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                    >
+                                                        <FaEdit className="w-3 h-3 mr-1" />
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteEvent(item.id)}
+                                                        className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                    >
+                                                        <FaTrash className="w-3 h-3 mr-1" />
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    ) : (
+                        // Criteria Table - Grouped by Event
+                        <div className="bg-white">
+                            {eventsWithCriteria.length === 0 ? (
+                                <div className="px-4 py-6 text-center text-sm text-gray-500">
+                                    <div className="flex flex-col items-center justify-center">
+                                        <FaListAlt className="w-10 h-10 text-gray-300 mb-2" />
+                                        <p>No criteria found</p>
+                                        <p className="text-xs mt-1">Get started by creating a new criteria</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                eventsWithCriteria.map((event) => {
+                                    const eventCriteria = criteriaByEvent[event.id] || [];
+                                    const isExpanded = expandedEvents.has(event.id);
+                                    
+                                    return (
+                                        <div key={event.id} className="border-b border-gray-200 last:border-b-0">
+                                            {/* Event Header */}
+                                            <div 
+                                                className="px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-150"
+                                                onClick={() => toggleEventExpansion(event.id)}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center">
+                                                        {isExpanded ? (
+                                                            <FaChevronDown className="w-4 h-4 text-gray-500 mr-2" />
+                                                        ) : (
+                                                            <FaChevronRight className="w-4 h-4 text-gray-500 mr-2" />
+                                                        )}
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full">
+                                                                <FaCalendarAlt className="w-4 h-4 text-blue-600" />
+                                                            </div>
+                                                            <div className="ml-3">
+                                                                <div className="text-sm font-medium text-gray-900">
+                                                                    {event.event_name}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500">
+                                                                    {event.event_type} • {eventCriteria.length} criteria
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center space-x-2">
+                                                        {getStatusBadge(event.is_active)}
+                                                        {getArchiveBadge(event.is_archived)}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Criteria Table for this Event */}
+                                            {isExpanded && (
+                                                <div className="bg-gray-25">
+                                                    <table className="min-w-full divide-y divide-gray-200">
+                                                        <thead className="bg-gray-100">
+                                                            <tr>
+                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Criteria
+                                                                </th>
+                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Description
+                                                                </th>
+                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Criteria %
+                                                                </th>
+                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Valid Round
+                                                                </th>
+                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Status
+                                                                </th>
+                                                                <th scope="col" className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                    Actions
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                            {eventCriteria.map((criteria) => (
+                                                                <tr key={criteria.id} className="hover:bg-gray-50 transition-colors duration-150">
+                                                                    <td className="px-6 py-3">
+                                                                        <div className="flex items-center">
+                                                                            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-green-100 rounded-full">
+                                                                                <FaListAlt className="w-3 h-3 text-green-600" />
+                                                                            </div>
+                                                                            <div className="ml-3">
+                                                                                <div className="text-sm font-medium text-gray-900">
+                                                                                    {criteria.criteria_desc}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-3">
+                                                                        <div className="text-sm text-gray-600 max-w-xs">
+                                                                            {criteria.definition || 'No description provided'}
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="px-6 py-3">
+                                                                        {getPercentageDisplay(criteria.percentage)}
+                                                                    </td>
+                                                                    <td className="px-6 py-3">
+                                                                        {getRoundBadge(criteria)}
+                                                                    </td>
+                                                                    <td className="px-6 py-3">
+                                                                        {getStatusBadge(criteria.is_active)}
+                                                                    </td>
+                                                                    <td className="px-6 py-3 text-right">
+                                                                        <div className="flex items-center justify-end space-x-1">
+                                                                            <button
+                                                                                onClick={() => openEditCriteria(criteria)}
+                                                                                className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                                            >
+                                                                                <FaEdit className="w-3 h-3 mr-1" />
+                                                                                Edit
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteCriteria(criteria.id)}
+                                                                                className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                                            >
+                                                                                <FaTrash className="w-3 h-3 mr-1" />
+                                                                                Delete
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
                                             )}
                                         </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                currentItems.map((item) => (
-                                    <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
-                                        {activeTab === 'events' ? (
-                                            <>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center">
-                                                        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full">
-                                                            <FaCalendarAlt className="w-4 h-4 text-blue-600" />
-                                                        </div>
-                                                        <div className="ml-3">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {item.event_name}
-                                                            </div>
-                                                            <div className="text-sm text-gray-500 line-clamp-1">
-                                                                {item.description || 'No description'}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {getEventTypeBadge(item.event_type)}
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="text-sm text-gray-900 space-y-2">
-                                                        <div className="flex items-start space-x-2">
-                                                            <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
-                                                            <div>
-                                                                <div className="font-medium text-gray-700">Start:</div>
-                                                                <div>{formatDateWithTime(item.event_start)}</div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex items-start space-x-2">
-                                                            <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
-                                                            <div>
-                                                                <div className="font-medium text-gray-700">End:</div>
-                                                                <div>{formatDateWithTime(item.event_end)}</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex flex-col space-y-1">
-                                                        {getStatusBadge(item.is_active)}
-                                                        {getArchiveBadge(item.is_archived)}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex items-center justify-end space-x-1">
-                                                        <button
-                                                            onClick={() => openEditEvent(item)}
-                                                            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
-                                                        >
-                                                            <FaEdit className="w-3 h-3 mr-1" />
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteEvent(item.id)}
-                                                            className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
-                                                        >
-                                                            <FaTrash className="w-3 h-3 mr-1" />
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center">
-                                                        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-green-100 rounded-full">
-                                                            <FaListAlt className="w-4 h-4 text-green-600" />
-                                                        </div>
-                                                        <div className="ml-3">
-                                                            <div className="text-sm font-medium text-gray-900">
-                                                                {item.criteria_desc}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="text-sm text-gray-600 max-w-xs">
-                                                        {item.definition || 'No description provided'}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex flex-col space-y-1">
-                                                        {getPercentageBadge(item.percentage)}
-                                                        <span className="text-xs text-gray-500">
-                                                            Max: {item.max_percentage}%
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex flex-col space-y-1">
-                                                        {getRoundBadge(item.active_id)}
-                                                        <span className="text-xs text-gray-500 mt-1">
-                                                            {getEventNameFromActiveId(item.active_id)}
-                                                        </span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3">
-                                                    {getStatusBadge(item.is_active)}
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex items-center justify-end space-x-1">
-                                                        <button
-                                                            onClick={() => openEditCriteria(item)}
-                                                            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
-                                                        >
-                                                            <FaEdit className="w-3 h-3 mr-1" />
-                                                            Edit
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteCriteria(item.id)}
-                                                            className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
-                                                        >
-                                                            <FaTrash className="w-3 h-3 mr-1" />
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </>
-                                        )}
-                                    </tr>
-                                ))
+                                    );
+                                })
                             )}
-                        </tbody>
-                    </table>
+                        </div>
+                    )}
                 </div>
 
-                {/* Pagination */}
-                {currentData.length > 0 && (
+                {/* Pagination - Only for events tab */}
+                {activeTab === 'events' && safeEvents.length > 0 && (
                     <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
                         <div className="flex flex-col sm:flex-row items-center justify-between space-y-2 sm:space-y-0">
                             <div className="text-sm text-gray-700">
-                                Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
-                                <span className="font-medium">
-                                    {Math.min(indexOfLastItem, currentData.length)}
-                                </span> of{' '}
-                                <span className="font-medium">{currentData.length}</span> {activeTab}
+                                Showing <span className="font-medium">{Math.min(safeEvents.length, 1)}</span> to{' '}
+                                <span className="font-medium">{safeEvents.length}</span> of{' '}
+                                <span className="font-medium">{safeEvents.length}</span> events
                             </div>
-                            
-                            <Pagination
-                                currentPage={currentPage}
-                                totalPages={totalPages}
-                                onPageChange={handlePageChange}
-                            />
                         </div>
                     </div>
                 )}

@@ -4,6 +4,7 @@ use App\Http\Controllers\admin\AdminController;
 use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\ProfileController;
+use App\Models\Event;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -67,8 +68,12 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/addEvent', [EventController::class, 'createEvent']);
     Route::get('/getEvents', [EventController::class, 'showEvents']);
     Route::put('/events/{id}', [EventController::class, 'editEvent']);
+    Route::delete('/events/{id}', [EventController::class, 'deleteEvent']);
 
     Route::get('/getCriterias', [EventController::class, 'showCriteria']);
+    Route::post('criterias', [EventController::class, 'createCriteria']);
+    Route::patch('/criterias/{id}', [EventController::class, 'editCriteria']);
+    Route::delete('criterias/{id}', [EventController::class, 'deleteCriteria']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

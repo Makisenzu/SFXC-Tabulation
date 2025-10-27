@@ -3,9 +3,10 @@
 namespace App\Http\Controllers\admin;
 
 use App\Models\Event;
+use App\Models\Active;
+use App\Models\Criteria;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
-use App\Models\Criteria;
 
 class EventController extends Controller
 {
@@ -51,6 +52,11 @@ class EventController extends Controller
         $eventData->update($validatedData);
         return redirect()->back()->with('success', 'Event updated successfully!');
     }
+    public function deleteEvent($id){
+        $eventData = Event::findOrFail($id);
+        $eventData->delete();
+        return redirect()->back()->with('success', 'Event deleted successfully!');
+    }
 
     public function showCriteria() {
         $criterias = Criteria::all();
@@ -59,8 +65,79 @@ class EventController extends Controller
 
     public function createCriteria(Request $request) {
         $validatedData = $request->validate([
-            ''
+            'event_id' => ['required', 'exists:events,id'],
+            'criteria_desc' => ['required', 'string', 'max:255'],
+            'definition' => ['nullable', 'string'],
+            'percentage' => ['required', 'integer', 'min:0', 'max:100'],
+            'valid_round' => ['required', 'integer', 'min:1'],
+            'is_active' => ['required', 'integer', 'in:0,1'],
         ]);
+
+        $active = Active::firstOrCreate(
+            [
+                'event_id' => $validatedData['event_id'],
+                'round_no' => $validatedData['valid_round']
+            ],
+            [
+                'is_active' => 0
+            ]
+        );
+
+        $criteria = Criteria::create([
+            'event_id' => $validatedData['event_id'],
+            'active_id' => $active->id,
+            'criteria_desc' => $validatedData['criteria_desc'],
+            'definition' => $validatedData['definition'],
+            'percentage' => $validatedData['percentage'],
+            'is_active' => $validatedData['is_active'],
+            'valid_round' => $validatedData['valid_round'],
+        ]);
+
+        return redirect()->back()->with('success', 'Criteria added successfully!');
+    }
+
+    public function editCriteria(Request $request, $id) {
+        $validatedData = $request->validate([
+            'event_id' => ['required', 'exists:events,id'],
+            'criteria_desc' => ['required', 'string', 'max:255'],
+            'definition' => ['nullable', 'string'],
+            'percentage' => ['required', 'integer', 'min:0', 'max:100'],
+            'valid_round' => ['required', 'integer', 'min:1'],
+            'is_active' => ['required', 'integer', 'in:0,1'],
+        ]);
+    
+        $criteria = Criteria::findOrFail($id);
+    
+        if ($criteria->valid_round != $validatedData['valid_round']) {
+            $active = Active::firstOrCreate(
+                [
+                    'event_id' => $validatedData['event_id'],
+                    'round_no' => $validatedData['valid_round']
+                ],
+                [
+                    'is_active' => 0
+                ]
+            );
+            $criteria->active_id = $active->id;
+        }
+    
+        $criteria->update([
+            'event_id' => $validatedData['event_id'],
+            'criteria_desc' => $validatedData['criteria_desc'],
+            'definition' => $validatedData['definition'],
+            'percentage' => $validatedData['percentage'],
+            'is_active' => $validatedData['is_active'],
+            'valid_round' => $validatedData['valid_round'],
+        ]);
+    
+        return redirect()->back()->with('success', 'Criteria updated successfully!');
+    }
+
+    public function deleteCriteria($id) {
+        $criteriaData = Criteria::findOrFail($id);
+
+        $criteriaData->delete();
+        return redirect()->back()->with('success', 'Criteria deleted successfully!');
     }
 
     /**

@@ -9,7 +9,7 @@ export default function ArchiveDashboard () {
                     </div>
                 } 
             >
-                <Head title="Archived Events" />
+                <Head title="SFXC Tabulation" />
                 <div className="py-6">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     </div>

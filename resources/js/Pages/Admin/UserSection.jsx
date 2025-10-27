@@ -15,7 +15,7 @@ export default function UserSection({ auth }) {
             } 
             auth={auth}
         >
-            <Head title="User Management" />
+            <Head title="SFXC Tabulation" />
             <div className="py-6">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
 

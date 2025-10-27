@@ -9,7 +9,7 @@ export default function CPRDasjboard () {
                     </div>
                 } 
             >
-                <Head title="Contestant Per Round" />
+                <Head title="SFXC Tabulation" />
                 <div className="py-6">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                     </div>

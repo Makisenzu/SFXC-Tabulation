@@ -11,7 +11,7 @@ export default function CriteriaDashboard () {
                     </div>
                 } 
             >
-                <Head title="Criteria Management" />
+                <Head title="SFXC Tabulation" />
                 <div className="py-6">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
                         <EventCriteriaTable/>

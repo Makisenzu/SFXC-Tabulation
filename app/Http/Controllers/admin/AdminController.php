@@ -7,6 +7,7 @@ use App\Models\User;
 use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Models\Tabulation;
 
 class AdminController extends Controller
 {
@@ -24,6 +25,7 @@ class AdminController extends Controller
         //
     }
 
+
     /**
      * Store a newly created resource in storage.
      */
@@ -35,9 +37,8 @@ class AdminController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(string $id)
+    public function showMedalTally(string $id)
     {
-        //
     }
 
     /**

@@ -10,7 +10,8 @@ class Event extends Model
         'event_name',
         'event_type',
         'description',
-        'event_date',
+        'event_start',
+        'event_end',
         'is_active',
         'is_archived',
     ];

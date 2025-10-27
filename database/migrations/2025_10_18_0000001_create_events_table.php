@@ -16,7 +16,8 @@ return new class extends Migration
             $table->string('event_name');
             $table->string('event_type');
             $table->text('description')->nullable();
-            $table->date('event_date');
+            $table->dateTime('event_start');
+            $table->dateTime('event_end');
             $table->integer('is_active')->default(1);
             $table->integer('is_archived')->default(0);
             $table->timestamps();

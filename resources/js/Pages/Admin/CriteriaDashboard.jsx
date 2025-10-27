@@ -1,6 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
-import EventCriteriaTable from './components/CriteriaComponents.jsx/CriteriaTable';
+import EventCriteriaTable from './components/CriteriaTable';
 
 export default function CriteriaDashboard () {
         return (

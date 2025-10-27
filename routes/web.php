@@ -1,13 +1,13 @@
 <?php
 
-use App\Http\Controllers\admin\AdminController;
+use App\Http\Controllers\admin\ContestantController;
+use Inertia\Inertia;
+use App\Models\Event;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Foundation\Application;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
-use App\Http\Controllers\ProfileController;
-use App\Models\Event;
-use Illuminate\Foundation\Application;
-use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 
 Route::get('/admin', function() {
@@ -69,11 +69,14 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getEvents', [EventController::class, 'showEvents']);
     Route::put('/events/{id}', [EventController::class, 'editEvent']);
     Route::delete('/events/{id}', [EventController::class, 'deleteEvent']);
-
     Route::get('/getCriterias', [EventController::class, 'showCriteria']);
     Route::post('criterias', [EventController::class, 'createCriteria']);
     Route::patch('/criterias/{id}', [EventController::class, 'editCriteria']);
     Route::delete('criterias/{id}', [EventController::class, 'deleteCriteria']);
+
+    //contestant
+    Route::get('/getContestants', [ContestantController::class, 'getContestants']);
+    Route::post('/addContestants', [ContestantController::class, 'createContestants']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

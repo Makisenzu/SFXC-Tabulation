@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
             $table->string('contestant_name');
-            $table->string('photo');
+            $table->string('photo')->nullable();
             $table->integer('sequence_no');
             $table->integer('is_active')->default('1');
             $table->timestamps();

@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import ContestantTable from './components/Contestants';
 export default function ContestantDashboard () {
         return (
             <AuthenticatedLayout 
@@ -12,6 +13,7 @@ export default function ContestantDashboard () {
                 <Head title="Contestant Management" />
                 <div className="py-6">
                     <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                        <ContestantTable/>
                     </div>
                 </div>
             </AuthenticatedLayout>

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\admin\AdminController;
+use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -61,6 +62,13 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/add/newUser', [PermissionController::class, 'addUser']);
     Route::delete('/delete/user/{id}', [PermissionController::class, 'deleteUser']);
     Route::patch('/edit/user/{id}', [PermissionController::class, 'updateUser']);
+
+    //events
+    Route::post('/addEvent', [EventController::class, 'createEvent']);
+    Route::get('/getEvents', [EventController::class, 'showEvents']);
+    Route::put('/events/{id}', [EventController::class, 'editEvent']);
+
+    Route::get('/getCriterias', [EventController::class, 'showCriteria']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

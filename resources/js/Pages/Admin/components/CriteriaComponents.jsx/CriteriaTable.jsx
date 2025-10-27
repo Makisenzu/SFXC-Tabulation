@@ -299,7 +299,7 @@ export default function EventCriteriaTable() {
             label: 'Criteria',
             type: 'text',
             required: true,
-            placeholder: 'Enter criteria description'
+            placeholder: 'Enter criteria name'
         },
         {
             name: 'definition',

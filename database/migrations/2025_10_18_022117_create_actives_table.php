@@ -17,6 +17,8 @@ return new class extends Migration
             $table->integer('round_no');
             $table->integer('is_active')->default(1);
             $table->timestamps();
+
+            $table->unique(['event_id', 'round_no']);
         });
     }
 

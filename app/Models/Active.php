@@ -7,13 +7,15 @@ use Illuminate\Database\Eloquent\Model;
 class Active extends Model
 {
     protected $fillable = [
-        'round_no'
+        'event_id',
+        'round_no',
+        'is_active'
     ];
 
-    public function criterias(){
+    public function criterias() {
         return $this->hasMany(Criteria::class);
     }
-
+    
     public function rounds() {
         return $this->hasMany(Round::class);
     }

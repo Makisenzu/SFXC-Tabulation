@@ -13,11 +13,13 @@ return new class extends Migration
     {
         Schema::create('criterias', function (Blueprint $table) {
             $table->id();
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
             $table->foreignId('active_id')->constrained('actives')->cascadeOnDelete();
             $table->string('criteria_desc');
             $table->string('definition')->nullable();
             $table->integer('percentage');
-            $table->integer('max_percentage');
+            $table->integer('valid_round')->default(1);
+            $table->integer('max_percentage')->default(10);
             $table->integer('is_active')->default(1);
             $table->timestamps();
         });

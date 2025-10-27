@@ -7,7 +7,9 @@ import {
     FaCalendarAlt, 
     FaUser,
     FaChevronDown,
-    FaChevronRight
+    FaChevronRight,
+    FaUpload,
+    FaImage
 } from 'react-icons/fa';
 import FormModal from '@/Components/FormModal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -22,13 +24,17 @@ export default function ContestantTable() {
     // Modal states
     const [showAddContestantModal, setShowAddContestantModal] = useState(false);
     const [showEditContestantModal, setShowEditContestantModal] = useState(false);
+    const [showUploadPhotoModal, setShowUploadPhotoModal] = useState(false);
     
     const [processing, setProcessing] = useState(false);
+    const [uploading, setUploading] = useState(false);
     
     const [editingContestant, setEditingContestant] = useState(null);
+    const [uploadingContestant, setUploadingContestant] = useState(null);
     
     const [addContestantFormData, setAddContestantFormData] = useState({});
     const [editContestantFormData, setEditContestantFormData] = useState({});
+    const [uploadPhotoFormData, setUploadPhotoFormData] = useState({ photo: null });
 
     // State for expanded events
     const [expandedEvents, setExpandedEvents] = useState(new Set());
@@ -170,6 +176,7 @@ export default function ContestantTable() {
         }
     ]), [safeEvents]);
 
+    // REMOVED photo field from edit contestant fields
     const editContestantFields = useMemo(() => ([
         {
             name: 'event_id',
@@ -191,19 +198,11 @@ export default function ContestantTable() {
             placeholder: 'Enter contestant name'
         },
         {
-            name: 'photo',
-            label: 'Photo',
-            type: 'file',
-            required: false,
-            placeholder: 'Upload contestant photo'
-        },
-        {
-            name: 'round_no',
-            label: 'Round Number',
+            name: 'sequence_no',
+            label: 'Sequence No',
             type: 'number',
             required: true,
-            min: 1,
-            placeholder: 'Enter round number'
+            placeholder: 'Contestant sequence number'
         },
         {
             name: 'is_active',
@@ -217,13 +216,24 @@ export default function ContestantTable() {
         }
     ]), [safeEvents]);
 
+    // Photo upload fields
+    const uploadPhotoFields = useMemo(() => ([
+        {
+            name: 'photo',
+            label: 'Contestant Photo',
+            type: 'file',
+            required: true,
+            accept: 'image/*',
+            placeholder: 'Select contestant photo'
+        }
+    ]), []);
+
     // Modal handlers for Contestants
     const openAddContestant = () => {
         setAddContestantFormData({
             event_id: '',
             contestant_name: '',
-            photo: '',
-            round_no: '1',
+            sequence_no: '',
             is_active: '1'
         });
         setShowAddContestantModal(true);
@@ -239,8 +249,7 @@ export default function ContestantTable() {
         setEditContestantFormData({
             event_id: contestant.event_id?.toString() || '',
             contestant_name: contestant.contestant_name || '',
-            photo: contestant.photo || '',
-            round_no: contestant.round_no?.toString() || '1',
+            sequence_no: contestant.sequence_no?.toString() || '',
             is_active: contestant.is_active?.toString() || '1'
         });
         setShowEditContestantModal(true);
@@ -252,6 +261,18 @@ export default function ContestantTable() {
         setEditContestantFormData({});
     };
 
+    const openUploadPhoto = (contestant) => {
+        setUploadingContestant(contestant);
+        setUploadPhotoFormData({ photo: null });
+        setShowUploadPhotoModal(true);
+    };
+
+    const closeUploadPhoto = () => {
+        setShowUploadPhotoModal(false);
+        setUploadingContestant(null);
+        setUploadPhotoFormData({ photo: null });
+    };
+
     // Form change handlers
     const handleAddContestantFormChange = (formData) => {
         setAddContestantFormData(formData);
@@ -259,6 +280,10 @@ export default function ContestantTable() {
 
     const handleEditContestantFormChange = (formData) => {
         setEditContestantFormData(formData);
+    };
+
+    const handleUploadPhotoFormChange = (formData) => {
+        setUploadPhotoFormData(formData);
     };
 
     // Refetch data
@@ -321,25 +346,65 @@ export default function ContestantTable() {
             });
         });
 
+    // Simplified edit contestant submit handler (no file upload)
     const handleEditContestantSubmit = (formData) =>
         new Promise((resolve, reject) => {
             setProcessing(true);
             
             console.log('Updating contestant with data:', formData);
             
-            router.patch(`/getEvents/${editingContestant.id}`, formData, {
+            router.patch(`/contestants/${editingContestant.id}`, formData, {
                 onSuccess: () => {
                     showAlert('success', 'Contestant updated successfully');
                     refetchData();
+                    closeEditContestant();
                     resolve();
                 },
                 onError: (errors) => {
+                    console.error('Update error:', errors);
                     showAlert('error', 'Failed to update contestant');
                     reject(errors);
                 },
                 onFinish: () => setProcessing(false)
             });
         });
+
+        const handleUploadPhotoSubmit = (formData) =>
+            new Promise((resolve, reject) => {
+                setUploading(true);
+                
+                // Get the file directly from the file input
+                const fileInput = document.querySelector('input[type="file"][name="photo"]');
+                const file = fileInput?.files[0];
+                
+                if (!file) {
+                    showAlert('error', 'Please select a photo file');
+                    setUploading(false);
+                    return reject(new Error('No file selected'));
+                }
+                
+                // Create FormData and append the file
+                const uploadFormData = new FormData();
+                uploadFormData.append('photo', file);
+                
+                // Use POST instead of PATCH for file uploads
+                router.post(`/contestants/${uploadingContestant.id}/upload-photo`, uploadFormData, {
+                    onSuccess: () => {
+                        showAlert('success', 'Photo uploaded successfully!');
+                        refetchData();
+                        closeUploadPhoto();
+                        resolve();
+                    },
+                    onError: (errors) => {
+                        console.error(errors);
+                        showAlert('error', 'Failed to upload photo');
+                        reject(errors);
+                    },
+                    onFinish: () => {
+                        setUploading(false);
+                    }
+                });
+            });
 
     // Delete handler
     const handleDeleteContestant = async (contestantId) => {
@@ -350,7 +415,7 @@ export default function ContestantTable() {
         );
         if (!confirmed) return;
 
-        router.delete(`/getEvents/${contestantId}`, {
+        router.delete(`/contestants/${contestantId}`, {
             onSuccess: () => {
                 showAlert('success', 'Contestant deleted successfully');
                 refetchData();
@@ -388,29 +453,28 @@ export default function ContestantTable() {
         );
     };
 
-    // Round badge
-    const getRoundBadge = (roundNo) => {
-        return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                Round {roundNo}
-            </span>
-        );
-    };
-
-    // Display photo or placeholder
     const getPhotoDisplay = (photo) => {
         if (photo) {
+            const photoUrl = `/storage/${photo}`;
             return (
-                <img 
-                    src={photo} 
-                    alt="Contestant" 
-                    className="w-10 h-10 rounded-full object-cover"
-                />
+                <div className="relative group">
+                    <img 
+                        src={photoUrl} 
+                        alt="Contestant" 
+                        className="w-16 h-20 object-cover rounded-lg border border-gray-200 shadow-sm"
+                        onError={(e) => {
+                            e.target.style.display = 'none';
+                            e.target.nextSibling.style.display = 'flex';
+                        }}
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 rounded-lg transition-all duration-200"></div>
+                </div>
             );
         }
         return (
-            <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-                <FaUser className="w-5 h-5 text-gray-500" />
+            <div className="w-16 h-20 rounded-lg bg-gray-100 border border-gray-200 flex flex-col items-center justify-center text-gray-400">
+                <FaImage className="w-6 h-6 mb-1" />
+                <span className="text-xs">No Photo</span>
             </div>
         );
     };
@@ -450,9 +514,6 @@ export default function ContestantTable() {
                 <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
                     <div className="flex items-center justify-between">
                         <div>
-                            <h2 className="text-lg font-semibold text-gray-900">
-                                
-                            </h2>
                         </div>
                         <div className="flex items-center space-x-2">
                             {eventsWithContestants.length > 0 && (
@@ -536,22 +597,22 @@ export default function ContestantTable() {
                                                 <table className="min-w-full divide-y divide-gray-200">
                                                     <thead className="bg-gray-100">
                                                         <tr>
-                                                            <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 No.
                                                             </th>
-                                                            <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Photo
                                                             </th>
-                                                            <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Contestant Name
                                                             </th>
-                                                            <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                Round No.
+                                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                Sequence No.
                                                             </th>
-                                                            <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Status
                                                             </th>
-                                                            <th scope="col" className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                            <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                 Actions
                                                             </th>
                                                         </tr>
@@ -559,39 +620,43 @@ export default function ContestantTable() {
                                                     <tbody className="bg-white divide-y divide-gray-200">
                                                         {eventContestants.map((contestant, index) => (
                                                             <tr key={contestant.id} className="hover:bg-gray-50 transition-colors duration-150">
-                                                                <td className="px-6 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                                                                     {index + 1}
                                                                 </td>
-                                                                <td className="px-6 py-3 whitespace-nowrap">
+                                                                <td className="px-6 py-4 whitespace-nowrap">
                                                                     {getPhotoDisplay(contestant.photo)}
                                                                 </td>
-                                                                <td className="px-6 py-3">
-                                                                    <div className="flex items-center">
-                                                                        <div className="ml-3">
-                                                                            <div className="text-sm font-medium text-gray-900">
-                                                                                {contestant.contestant_name}
-                                                                            </div>
-                                                                        </div>
+                                                                <td className="px-6 py-4">
+                                                                    <div className="text-sm font-medium text-gray-900">
+                                                                        {contestant.contestant_name}
                                                                     </div>
                                                                 </td>
-                                                                <td className="px-6 py-3 whitespace-nowrap">
-                                                                    {getRoundBadge(contestant.round_no)}
+                                                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                                    {contestant.sequence_no}
                                                                 </td>
-                                                                <td className="px-6 py-3 whitespace-nowrap">
+                                                                <td className="px-6 py-4 whitespace-nowrap">
                                                                     {getStatusBadge(contestant.is_active)}
                                                                 </td>
-                                                                <td className="px-6 py-3 text-right whitespace-nowrap">
-                                                                    <div className="flex items-center justify-end space-x-1">
+                                                                <td className="px-6 py-4 text-right whitespace-nowrap">
+                                                                    <div className="flex items-center justify-end space-x-2">
+                                                                        {/* ADDED Upload Photo Button before Edit */}
+                                                                        <button
+                                                                            onClick={() => openUploadPhoto(contestant)}
+                                                                            className="inline-flex items-center px-3 py-1 border border-blue-300 rounded text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                                        >
+                                                                            <FaUpload className="w-3 h-3 mr-1" />
+                                                                            Upload Photo
+                                                                        </button>
                                                                         <button
                                                                             onClick={() => openEditContestant(contestant)}
-                                                                            className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                                            className="inline-flex items-center px-3 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
                                                                         >
                                                                             <FaEdit className="w-3 h-3 mr-1" />
                                                                             Edit
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleDeleteContestant(contestant.id)}
-                                                                            className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                                            className="inline-flex items-center px-3 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
                                                                         >
                                                                             <FaTrash className="w-3 h-3 mr-1" />
                                                                             Delete
@@ -626,6 +691,7 @@ export default function ContestantTable() {
                 key={`add-contestant-${showAddContestantModal}`}
             />
 
+            {/* Edit Contestant Modal - REMOVED photo field and custom content */}
             <FormModal
                 show={showEditContestantModal}
                 onClose={closeEditContestant}
@@ -638,6 +704,20 @@ export default function ContestantTable() {
                 formData={editContestantFormData}
                 onFormChange={handleEditContestantFormChange}
                 key={`edit-contestant-${editingContestant?.id || 'none'}`}
+            />
+
+            {/* Upload Photo Modal */}
+            <FormModal
+                show={showUploadPhotoModal}
+                onClose={closeUploadPhoto}
+                title={`Upload Photo - ${uploadingContestant ? uploadingContestant.contestant_name : ''}`}
+                fields={uploadPhotoFields}
+                onSubmit={handleUploadPhotoSubmit}
+                submitText={uploading ? 'Uploading...' : 'Upload Photo'}
+                processing={uploading}
+                formData={uploadPhotoFormData}
+                onFormChange={handleUploadPhotoFormChange}
+                key={`upload-photo-${uploadingContestant?.id || 'none'}`}
             />
         </>
     );

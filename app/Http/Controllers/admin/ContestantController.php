@@ -40,6 +40,51 @@ class ContestantController extends Controller
         return redirect()->back()->with('success', 'Contestant added successfully!');
     }
 
+    public function editContestant(Request $request, $id) {
+        $contestant = Contestant::findOrFail($id);
+        
+        $validateData = $request->validate([
+            'event_id' => ['required', 'exists:events,id'],
+            'contestant_name' => ['required', 'string', 'max:255'],
+            'sequence_no' => [
+                'required', 
+                'integer',
+                Rule::unique('contestants')->where(function ($query) use ($request) {
+                    return $query->where('event_id', $request->event_id);
+                })->ignore($contestant->id)
+            ],
+            'is_active' => ['required', 'in:0,1']
+        ]);
+    
+        $contestant->update($validateData);
+        return redirect()->back()->with('success', 'Contestant updated successfully!');
+    }
+
+    public function uploadPhoto(Request $request, $id) {
+        $contestant = Contestant::findOrFail($id);
+        
+        $validateData = $request->validate([
+            'photo' => ['required', 'image', 'mimes:jpeg,png,jpg,gif', 'max:2048']
+        ]);
+    
+        try {
+            if ($contestant->photo) {
+                $oldPhotoPath = storage_path('app/public/' . $contestant->photo);
+                if (file_exists($oldPhotoPath)) {
+                    unlink($oldPhotoPath);
+                }
+            }
+
+            $photoPath = $request->file('photo')->store('contestants', 'public');
+            $contestant->update(['photo' => $photoPath]);
+            
+            return redirect()->back()->with('success', 'Photo uploaded successfully!');
+            
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to upload photo: ' . $e->getMessage());
+        }
+    }
+
     /**
      * Show the form for creating a new resource.
      */

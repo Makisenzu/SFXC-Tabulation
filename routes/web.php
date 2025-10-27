@@ -77,6 +77,8 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     //contestant
     Route::get('/getContestants', [ContestantController::class, 'getContestants']);
     Route::post('/addContestants', [ContestantController::class, 'createContestants']);
+    Route::patch('/contestants/{id}', [ContestantController::class, 'editContestant']);
+    Route::post('/contestants/{id}/upload-photo', [ContestantController::class, 'uploadPhoto']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

@@ -241,22 +241,40 @@ export default function RoundManagementTable() {
     const handlePopulateTabulationCriteria = async (eventId, roundNo) => {
         const confirmed = await confirmDialog(
             'Populate Tabulation Criteria?',
-            `This will populate tabulation criteria for Round ${roundNo}. This action cannot be undone.`,
-            'Yes, populate criteria'
+            `This will prepare Round ${roundNo} for judging by showing contestants and criteria to judges.`,
+            'Yes, populate for judges'
         );
         if (!confirmed) return;
-
+    
         setProcessing(true);
-        try {
-            router.post(`/events/${eventId}/populate-criteria`, { round_no: roundNo }, {
-                onSuccess: () => showAlert('success', 'Tabulation criteria populated successfully!'),
-                onError: () => showAlert('error', 'Failed to populate tabulation criteria'),
-                onFinish: () => setProcessing(false)
-            });
-        } catch (error) {
-            console.error('Error populating criteria:', error);
-            setProcessing(false);
-        }
+        
+        router.post(`/events/${eventId}/populate-criteria`, { 
+            round_no: roundNo 
+        }, {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                if (page.props.success) {
+                    const data = page.props.populatedData || page.props.data;
+                    if (data) {
+                        showAlert('success', 
+                            `Tabulation ready for judges! 
+                            ${data.summary.total_contestants} contestants and 
+                            ${data.summary.total_criteria} criteria loaded for Round ${roundNo}.`
+                        );
+                    } else {
+                        showAlert('success', page.props.message || 'Tabulation criteria populated successfully!');
+                    }
+                }
+            },
+            onError: (errors) => {
+                if (errors.message) {
+                    showAlert('error', errors.message);
+                } else {
+                    showAlert('error', 'Failed to populate tabulation criteria');
+                }
+            },
+            onFinish: () => setProcessing(false)
+        });
     };
 
     const handleDeleteContestantRound = async (contestantId, roundNo, eventId) => {

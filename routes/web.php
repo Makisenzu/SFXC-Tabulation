@@ -86,12 +86,15 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/get-round-contestants/{eventId}/{roundNo}', [RoundController::class, 'getRoundContestants']);
     Route::delete('/contestant-rounds/{contestantId}', [RoundController::class, 'deleteContestant']);
     Route::patch('/events/{id}/set-active-round', [RoundController::class, 'setActiveRound']);
+    Route::post('/events/{id}/populate-criteria', [RoundController::class, 'populateTabulationCriteria']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {
     Route::get('/tabulation/dashboard', function (){
         return Inertia::render('Judge/JudgeDashboard');
     })->name('judge.dashboard');
+
+    Route::get('/fetchContestants', [ContestantController::class, 'getContestants']);
 });
 
 Route::middleware('auth')->group(function () {

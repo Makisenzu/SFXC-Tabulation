@@ -5,6 +5,7 @@ namespace App\Http\Controllers\admin;
 use App\Models\Event;
 use App\Models\Round;
 use App\Models\Active;
+use App\Models\Criteria;
 use App\Models\Contestant;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
@@ -103,8 +104,7 @@ class RoundController extends Controller
             }
     }
 
-    public function setActiveRound($eventId, Request $request)
-    {
+    public function setActiveRound($eventId, Request $request){
             $request->validate([
                 'round_no' => 'required|integer|min:1'
             ]);
@@ -126,6 +126,80 @@ class RoundController extends Controller
             }
     
             return redirect()->back()->with('success', 'Set as active round!');
+    }
+
+    public function populateTabulationCriteria($eventId, Request $request)
+    {
+        try {
+            $request->validate([
+                'round_no' => 'required|integer|min:1'
+            ]);
+    
+            $roundNo = $request->round_no;
+    
+            $activeRound = Active::where('event_id', $eventId)
+                ->where('round_no', $roundNo)
+                ->first();
+    
+            if (!$activeRound) {
+                return redirect()->back()->withErrors([
+                    'message' => 'Active round not found'
+                ]);
+            }
+    
+            $contestants = Contestant::whereHas('rounds', function($query) use ($activeRound) {
+                    $query->where('active_id', $activeRound->id);
+                })
+                ->with(['event'])
+                ->get();
+    
+            $criteria = Criteria::where('active_id', $activeRound->id)
+                ->where('is_active', 1)
+                ->get();
+    
+            $judgeData = [
+                'active_round' => [
+                    'round_no' => $activeRound->round_no,
+                    'event_name' => $activeRound->event->event_name ?? 'Unknown Event',
+                    'is_active' => $activeRound->is_active
+                ],
+                'contestants' => $contestants->map(function($contestant) {
+                    return [
+                        'id' => $contestant->id,
+                        'contestant_name' => $contestant->contestant_name,
+                        'sequence_no' => $contestant->sequence_no,
+                        'photo' => $contestant->photo,
+                        'is_active' => $contestant->is_active
+                    ];
+                }),
+                'criteria' => $criteria->map(function($criterion) {
+                    return [
+                        'id' => $criterion->id,
+                        'criteria_desc' => $criterion->criteria_desc,
+                        'definition' => $criterion->definition,
+                        'percentage' => $criterion->percentage,
+                        'max_percentage' => $criterion->max_percentage
+                    ];
+                }),
+                'summary' => [
+                    'total_contestants' => $contestants->count(),
+                    'total_criteria' => $criteria->count(),
+                    'total_percentage' => $criteria->sum('percentage')
+                ]
+            ];
+    
+            // For Inertia, use redirect back with data
+            return redirect()->back()->with([
+                'success' => true,
+                'data' => $judgeData,
+                'message' => 'Tabulation criteria populated successfully for judges'
+            ]);
+    
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors([
+                'message' => 'Failed to populate tabulation criteria: ' . $e->getMessage()
+            ]);
+        }
     }
 
     public function index()

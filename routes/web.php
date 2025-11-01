@@ -8,7 +8,7 @@ use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
-
+use App\Http\Controllers\admin\RoundController;
 
 Route::get('/admin', function() {
     return Inertia::render('Auth/Login');
@@ -28,6 +28,7 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+Route::get('/getActiveRounds/{id}', [RoundController::class, 'getActiveRounds']);
 
 // Route::get('/dashboard', function () {
 //     return Inertia::render('Dashboard');
@@ -79,6 +80,12 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/addContestants', [ContestantController::class, 'createContestants']);
     Route::patch('/contestants/{id}', [ContestantController::class, 'editContestant']);
     Route::post('/contestants/{id}/upload-photo', [ContestantController::class, 'uploadPhoto']);
+
+    //rounds
+    Route::post('/contestant-rounds/bulk', [RoundController::class, 'addContestantRound']);
+    Route::get('/get-round-contestants/{eventId}/{roundNo}', [RoundController::class, 'getRoundContestants']);
+    Route::delete('/contestant-rounds/{contestantId}', [RoundController::class, 'deleteContestant']);
+    Route::patch('/events/{id}/set-active-round', [RoundController::class, 'setActiveRound']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

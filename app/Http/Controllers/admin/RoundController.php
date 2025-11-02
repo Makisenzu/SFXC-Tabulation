@@ -128,8 +128,7 @@ class RoundController extends Controller
             return redirect()->back()->with('success', 'Set as active round!');
     }
 
-    public function populateTabulationCriteria($eventId, Request $request)
-    {
+    public function populateTabulationCriteria($eventId, Request $request){
         try {
             $request->validate([
                 'round_no' => 'required|integer|min:1'

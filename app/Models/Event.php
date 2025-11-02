@@ -30,4 +30,8 @@ class Event extends Model
     public function resultArchive() {
         return $this->hasMany(ResultArchive::class);
     }
+
+    public function assigns(){
+        return $this->hasMany(Assign::class);
+    }
 }

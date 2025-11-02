@@ -74,6 +74,8 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('criterias', [EventController::class, 'createCriteria']);
     Route::patch('/criterias/{id}', [EventController::class, 'editCriteria']);
     Route::delete('criterias/{id}', [EventController::class, 'deleteCriteria']);
+    Route::get('/getJudges', [EventController::class, 'getJudges']);
+    Route::post('/assign-judge', [EventController::class, 'assignJudge']);
 
     //contestant
     Route::get('/getContestants', [ContestantController::class, 'getContestants']);

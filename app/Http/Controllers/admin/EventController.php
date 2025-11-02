@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers\admin;
 
+use App\Models\User;
 use App\Models\Event;
 use App\Models\Active;
+use App\Models\Assign;
 use App\Models\Criteria;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 
 class EventController extends Controller
@@ -139,6 +142,55 @@ class EventController extends Controller
         $criteriaData->delete();
         return redirect()->back()->with('success', 'Criteria deleted successfully!');
     }
+    public function getJudges(Request $request) {
+        $eventId = $request->query('event_id');
+        
+        $judges = User::where('role_id', 2)
+            ->where('is_active', 1);
+
+        $judges = $judges->whereDoesntHave('assigns.event', function($query) {
+            $query->where('is_active', 1);
+        });
+        
+        $judges = $judges->get();
+        
+        return response()->json([
+            'judges' => $judges
+        ]);
+    }
+
+    public function assignJudge(Request $request) {
+        $validatedData = $request->validate([
+            'event_id' => ['required', 'exists:events,id'],
+            'user_id' => ['required', 'array', 'min:1'],
+            'user_id.*' => ['required', 'exists:users,id']
+        ]);
+    
+        DB::beginTransaction();
+        
+        try {
+            $eventId = $validatedData['event_id'];
+            $judgeIds = $validatedData['user_id'];
+    
+    
+            foreach ($judgeIds as $judgeId) {
+                Assign::create([
+                    'event_id' => $eventId,
+                    'user_id' => $judgeId
+                ]);
+            }
+    
+            DB::commit();
+    
+            return redirect()->back()->with('success', 'Judges assigned successfully!');
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()->with('error', 'Failed to assign judges: ' . $e->getMessage());
+        }
+    }
+
 
     /**
      * Show the form for creating a new resource.

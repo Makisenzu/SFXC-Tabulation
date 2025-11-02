@@ -54,4 +54,8 @@ class User extends Authenticatable
     public function tabulations() {
         return $this->hasMany(Tabulation::class);
     }
+
+    public function assigns() {
+        return $this->hasMany(Assign::class);
+    }
 }

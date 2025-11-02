@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\admin\RoundController;
+use App\Http\Controllers\judge\JudgeController;
 
 Route::get('/admin', function() {
     return Inertia::render('Auth/Login');
@@ -97,7 +98,7 @@ Route::middleware(['auth', 'role:Judge'])->group(function () {
         return Inertia::render('Judge/JudgeDashboard');
     })->name('judge.dashboard');
 
-    Route::get('/fetchContestants', [ContestantController::class, 'getContestants']);
+    Route::get('/judge/tabulation-data', [JudgeController::class, 'getTabulationData']);
 });
 
 Route::middleware('auth')->group(function () {

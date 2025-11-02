@@ -5,12 +5,12 @@ import { useState, useEffect } from 'react';
 import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 
-export default function JudgeLayout({ header, children, auth: propAuth, onContestantSelect }) {
+export default function JudgeLayout({ header, children, auth: propAuth, onContestantSelect, selectedContestant }) {
     const pageProps = usePage().props;
     const auth = propAuth || pageProps.auth;
     const user = auth.user;
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
-    const [contestants, setContestants] = useState([]);
+    const [tabulationData, setTabulationData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
@@ -18,70 +18,52 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         setMobileSidebarOpen(!mobileSidebarOpen);
     };
 
-    // Fetch contestants from API
     useEffect(() => {
-        const fetchContestants = async () => {
+        const fetchTabulationData = async () => {
             try {
                 setLoading(true);
-                const response = await fetch('/fetchContestants');
+                const response = await fetch('/judge/tabulation-data');
                 
                 if (!response.ok) {
-                    throw new Error('Failed to fetch contestants');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const data = await response.json();
-                setContestants(data);
+                const result = await response.json();
+                
+                if (result.success) {
+                    setTabulationData(result.data);
+                } else {
+                    throw new Error(result.error || 'Failed to fetch tabulation data');
+                }
             } catch (err) {
-                console.error('Error fetching contestants:', err);
+                console.error('Error fetching tabulation data:', err);
                 setError(err.message);
             } finally {
                 setLoading(false);
             }
         };
 
-        fetchContestants();
+        fetchTabulationData();
     }, []);
 
-    // Function to get photo URL
     const getPhotoUrl = (photoPath) => {
         if (!photoPath) return '/default-candidate.jpg';
-        
-        // If it's already a full URL, return as is
-        if (photoPath.startsWith('http')) {
-            return photoPath;
-        }
-        
-        // If it's a storage path, convert to public URL
-        if (photoPath.startsWith('contestants/')) {
-            return `/storage/${photoPath}`;
-        }
-        
-        // Default case
+        if (photoPath.startsWith('http')) return photoPath;
+        if (photoPath.startsWith('contestants/')) return `/storage/${photoPath}`;
         return `/storage/${photoPath}`;
     };
 
-    // Function to format contestant display name
-    const getDisplayName = (contestant) => {
-        return contestant.contestant_name || `Contestant ${contestant.id}`;
-    };
-
-    // Function to get department/cluster info
-    const getContestantInfo = (contestant) => {
-        return contestant.department || contestant.cluster || 'Contestant';
-    };
-
-    // Handle contestant selection
     const handleContestantSelect = (contestant) => {
         if (onContestantSelect) {
             onContestantSelect(contestant);
         }
     };
 
+    const contestants = tabulationData?.contestants || [];
+
     return (
         <div className="min-h-screen bg-gray-50 flex">
-            {/* Desktop Sidebar - Much Wider for Bigger Display */}
             <div className="hidden md:flex md:flex-col w-[500px] bg-white border-r border-gray-200">
-                {/* Logo Section - Smaller to maximize contestant space */}
                 <div className="flex items-center gap-3 p-4 border-b border-gray-200">
                     <ApplicationLogo className="block h-10 w-auto fill-current text-gray-900" />
                     <div>
@@ -89,18 +71,22 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                         <p className="text-xs text-gray-500">Tabulation System</p>
                     </div>
                 </div>
-
-                {/* Contestants Section - Maximum Space */}
+                
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-6">
-                        
                         {loading ? (
                             <div className="flex justify-center py-12">
                                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
                             </div>
                         ) : error ? (
                             <div className="text-center py-12">
+                                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
                                 <p className="text-lg text-red-600 mb-3">Failed to load contestants</p>
+                                <p className="text-sm text-gray-600 mb-4">{error}</p>
                                 <button 
                                     onClick={() => window.location.reload()}
                                     className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 font-medium"
@@ -110,20 +96,32 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                             </div>
                         ) : contestants.length === 0 ? (
                             <div className="text-center py-16">
+                                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                    <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z" />
+                                    </svg>
+                                </div>
                                 <p className="text-xl text-gray-500">No contestants available</p>
+                                <p className="text-sm text-gray-400 mt-2">
+                                    Check if there's an active round with contestants
+                                </p>
                             </div>
                         ) : (
                             <div className="space-y-6">
                                 {contestants.map((contestant) => (
                                     <div
                                         key={contestant.id}
-                                        className="flex items-center gap-6 p-6 rounded-2xl border-2 border-gray-200 hover:border-purple-400 hover:bg-purple-50 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                                        className={`flex items-center gap-6 p-6 rounded-2xl border-2 transition-all duration-200 cursor-pointer shadow-lg transform hover:scale-[1.02] ${
+                                            selectedContestant?.id === contestant.id 
+                                                ? 'border-purple-500 bg-purple-50 shadow-purple-200' 
+                                                : 'border-gray-200 hover:border-purple-400 hover:bg-purple-50'
+                                        }`}
                                         onClick={() => handleContestantSelect(contestant)}
                                     >
                                         <div className="relative flex-shrink-0">
                                             <img
                                                 src={getPhotoUrl(contestant.photo)}
-                                                alt={getDisplayName(contestant)}
+                                                alt={contestant.contestant_name}
                                                 className="w-32 h-32 rounded-full object-cover border-4 border-gray-300 shadow-2xl"
                                                 onError={(e) => {
                                                     e.target.src = '/default-candidate.jpg';
@@ -132,16 +130,8 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-2xl font-bold text-gray-900 truncate mb-2">
-                                                {getDisplayName(contestant)}
+                                                {contestant.contestant_name}
                                             </p>
-                                            <p className="text-xl text-gray-700 truncate mb-2">
-                                                {getContestantInfo(contestant)}
-                                            </p>
-                                            {contestant.event && (
-                                                <p className="text-lg text-gray-500 truncate">
-                                                    {contestant.event.event_name}
-                                                </p>
-                                            )}
                                         </div>
                                     </div>
                                 ))}
@@ -209,30 +199,26 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                             {contestants.map((contestant) => (
                                 <div
                                     key={contestant.id}
-                                    className="flex items-center gap-4 p-4 rounded-xl border-2 border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all cursor-pointer"
+                                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer ${
+                                        selectedContestant?.id === contestant.id 
+                                            ? 'border-purple-500 bg-purple-50' 
+                                            : 'border-gray-200 hover:border-purple-300 hover:bg-purple-50'
+                                    }`}
                                     onClick={() => handleContestantSelect(contestant)}
                                 >
                                     <div className="relative flex-shrink-0">
                                         <img
                                             src={getPhotoUrl(contestant.photo)}
-                                            alt={getDisplayName(contestant)}
+                                            alt={contestant.contestant_name}
                                             className="w-20 h-20 rounded-full object-cover border-4 border-gray-200"
                                             onError={(e) => {
                                                 e.target.src = '/default-candidate.jpg';
                                             }}
-                                        />
-                                        <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-purple-600 rounded-full border-2 border-white flex items-center justify-center">
-                                            <span className="text-sm font-bold text-white">
-                                                {contestant.sequence_no || contestant.id}
-                                            </span>
-                                        </div>
+                                        />  
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <p className="text-xl font-bold text-gray-900 truncate">
-                                            {getDisplayName(contestant)}
-                                        </p>
-                                        <p className="text-lg text-gray-600 truncate">
-                                            {getContestantInfo(contestant)}
+                                            {contestant.contestant_name}
                                         </p>
                                     </div>
                                 </div>

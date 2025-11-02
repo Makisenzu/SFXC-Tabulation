@@ -157,6 +157,7 @@ export default function RoundManagementTable() {
             }
         } catch (error) {
             console.error('Error refreshing round contestants:', error);
+            refetchData();
         }
     };
 
@@ -367,7 +368,7 @@ export default function RoundManagementTable() {
                 showAlert('error', 'Please select a round');
                 return;
             }
-
+        
             setProcessing(true);
             
             const payload = {
@@ -376,16 +377,51 @@ export default function RoundManagementTable() {
                 event_id: selectedEventForRound.id
             };
             
+            // Optimistically update the UI immediately
+            const selectedContestantObjects = availableContestants.filter(contestant => 
+                selectedContestants.has(contestant.id)
+            );
+            
+            // Update the round contestants state immediately
+            setRoundContestants(prev => ({
+                ...prev,
+                [selectedEventForRound.id]: {
+                    ...prev[selectedEventForRound.id],
+                    [selectedRound]: [
+                        ...(prev[selectedEventForRound.id]?.[selectedRound] || []),
+                        ...selectedContestantObjects
+                    ]
+                }
+            }));
+            
             router.post('/contestant-rounds/bulk', payload, {
                 preserveScroll: true,
                 onSuccess: () => {
                     showAlert('success', `${selectedContestants.size} contestant(s) added to round successfully!`);
-                    refetchData();
+                    
+                    // Only refresh the specific round data instead of full refetch
+                    refreshRoundContestants(selectedEventForRound.id, selectedRound);
+                    
                     closeAddContestantRound();
                     setSelectedContestants(new Set());
                     setSelectedRound('');
                 },
-                onError: () => showAlert('error', 'Failed to add contestants to round'),
+                onError: (errors) => {
+                    console.error('Add contestants error:', errors);
+                    
+                    // Revert the optimistic update on error
+                    setRoundContestants(prev => ({
+                        ...prev,
+                        [selectedEventForRound.id]: {
+                            ...prev[selectedEventForRound.id],
+                            [selectedRound]: prev[selectedEventForRound.id]?.[selectedRound]?.filter(
+                                contestant => !selectedContestants.has(contestant.id)
+                            ) || []
+                        }
+                    }));
+                    
+                    showAlert('error', 'Failed to add contestants to round');
+                },
                 onFinish: () => setProcessing(false)
             });
         };

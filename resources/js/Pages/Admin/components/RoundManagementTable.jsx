@@ -37,7 +37,6 @@ export default function RoundManagementTable() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            try {
                 const eventsResponse = await fetch('/getEvents');
                 if (!eventsResponse.ok) throw new Error(`HTTP error! status: ${eventsResponse.status}`);
                 const eventsData = await eventsResponse.json();
@@ -66,16 +65,6 @@ export default function RoundManagementTable() {
                 setRounds(allRounds);
 
                 await fetchRoundContestants(processedEvents, allRounds);
-                
-            } catch (error) {
-                console.error('Error fetching data:', error);
-                setError(error.message);
-                setEvents([]);
-                setContestants([]);
-                setRounds({});
-            } finally {
-                setLoading(false);
-            }
         };
 
         fetchData();
@@ -658,16 +647,16 @@ export default function RoundManagementTable() {
         );
     };
 
-    if (loading) {
-        return (
-            <div className="flex justify-center items-center py-20">
-                <div className="relative">
-                    <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
-                    <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0"></div>
-                </div>
-            </div>
-        );
-    }
+    // if (loading) {
+    //     return (
+    //         <div className="flex justify-center items-center py-20">
+    //             <div className="relative">
+    //                 <div className="w-16 h-16 border-4 border-gray-200 rounded-full"></div>
+    //                 <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin absolute top-0"></div>
+    //             </div>
+    //         </div>
+    //     );
+    // }
 
     if (error) {
         return (

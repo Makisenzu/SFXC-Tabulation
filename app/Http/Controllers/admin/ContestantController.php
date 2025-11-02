@@ -85,6 +85,14 @@ class ContestantController extends Controller
         }
     }
 
+    public function deleteContestant($id) {
+        $data = Contestant::findOrFail($id);
+
+        $data->delete();
+        
+        return redirect()->back()->with('success', 'Contestant removed!');
+    }
+
     /**
      * Show the form for creating a new resource.
      */

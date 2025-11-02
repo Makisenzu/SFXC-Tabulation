@@ -81,6 +81,7 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getContestants', [ContestantController::class, 'getContestants']);
     Route::post('/addContestants', [ContestantController::class, 'createContestants']);
     Route::patch('/contestants/{id}', [ContestantController::class, 'editContestant']);
+    Route::delete('/deleteContestant/{id}', [ContestantController::class, 'deleteContestant']);
     Route::post('/contestants/{id}/upload-photo', [ContestantController::class, 'uploadPhoto']);
 
     //rounds

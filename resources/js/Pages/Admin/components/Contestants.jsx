@@ -415,7 +415,7 @@ export default function ContestantTable() {
         );
         if (!confirmed) return;
 
-        router.delete(`/contestants/${contestantId}`, {
+        router.delete(`/deleteContestant/${contestantId}`, {
             onSuccess: () => {
                 showAlert('success', 'Contestant deleted successfully');
                 refetchData();

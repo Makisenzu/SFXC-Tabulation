@@ -86,22 +86,28 @@ class RoundController extends Controller
     }
 
     public function deleteContestant($contestantId, Request $request){
-            $request->validate([
-                'round_no' => 'required|integer',
-                'event_id' => 'required|exists:events,id'
-            ]);
+        $request->validate([
+            'round_no' => 'required|integer',
+            'event_id' => 'required|exists:events,id'
+        ]);
     
-            $activeRound = Active::where('event_id', $request->event_id)
-                ->where('round_no', $request->round_no)
-                ->first();
-
-            $deleted = Round::where('contestant_id', $contestantId)
-                ->where('active_id', $activeRound->id)
-                ->delete();
+        $activeRound = Active::where('event_id', $request->event_id)
+            ->where('round_no', $request->round_no)
+            ->first();
     
-            if ($deleted) {
-                return redirect()->back()->with('success', 'Contestant deleted successfully!');
-            }
+        if (!$activeRound) {
+            return back()->with('error', 'Active round not found');
+        }
+    
+        $deleted = Round::where('contestant_id', $contestantId)
+            ->where('active_id', $activeRound->id)
+            ->delete();
+    
+        if ($deleted) {
+            return back()->with('success', 'Contestant removed from round successfully');
+        }
+    
+        return back()->with('error', 'Failed to remove contestant from round');
     }
 
     public function setActiveRound($eventId, Request $request){

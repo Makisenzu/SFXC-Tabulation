@@ -284,20 +284,41 @@ export default function RoundManagementTable() {
             'Yes, remove from round'
         );
         if (!confirmed) return;
-
-        try {
-            router.delete(`/contestant-rounds/${contestantId}`, { 
-                data: { round_no: roundNo, event_id: eventId } 
-            }, {
-                onSuccess: () => {
-                    showAlert('success', 'Contestant removed from round successfully');
-                    refreshRoundContestants(eventId, roundNo);
-                },
-                onError: () => showAlert('error', 'Failed to remove contestant from round'),
-            });
-        } catch (error) {
-            console.error('Error deleting contestant from round:', error);
-        }
+    
+        const currentContestants = roundContestants[eventId]?.[roundNo] || [];
+        const updatedContestants = currentContestants.filter(contestant => contestant.id !== contestantId);
+        
+        setRoundContestants(prev => ({
+            ...prev,
+            [eventId]: {
+                ...prev[eventId],
+                [roundNo]: updatedContestants
+            }
+        }));
+    
+        router.delete(`/contestant-rounds/${contestantId}`, {
+            data: {
+                round_no: roundNo,
+                event_id: eventId
+            },
+            preserveScroll: true,
+            onSuccess: () => {
+                showAlert('success', 'Contestant removed from round successfully');
+                refreshRoundContestants(eventId, roundNo);
+            },
+            onError: (errors) => {
+                console.error('Delete error:', errors);
+                setRoundContestants(prev => ({
+                    ...prev,
+                    [eventId]: {
+                        ...prev[eventId],
+                        [roundNo]: currentContestants
+                    }
+                }));
+                
+                showAlert('error', 'Failed to remove contestant from round');
+            }
+        });
     };
 
     const AddMultipleContestantsModal = () => {
@@ -356,6 +377,7 @@ export default function RoundManagementTable() {
             };
             
             router.post('/contestant-rounds/bulk', payload, {
+                preserveScroll: true,
                 onSuccess: () => {
                     showAlert('success', `${selectedContestants.size} contestant(s) added to round successfully!`);
                     refetchData();

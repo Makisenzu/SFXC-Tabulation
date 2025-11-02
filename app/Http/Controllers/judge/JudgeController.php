@@ -18,8 +18,7 @@ class JudgeController extends Controller
      * Display a listing of the resource.
      */
 
-     public function getTabulationData(Request $request)
-    {
+     public function getTabulationData(Request $request){
         try {
             $judge = Auth::user();
             $assignedEvent = Assign::where('user_id', $judge->id)

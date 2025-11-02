@@ -10,6 +10,7 @@ use App\Models\Criteria;
 use App\Models\Contestant;
 use App\Models\Tabulation;
 use Illuminate\Http\Request;
+use App\Events\TabulationBroadcast;
 use App\Http\Controllers\Controller;
 
 class RoundController extends Controller
@@ -136,13 +137,14 @@ class RoundController extends Controller
             return redirect()->back()->with('success', 'Set as active round!');
     }
 
-    public function populateTabulationCriteria($eventId, Request $request){
+    public function populateTabulationCriteria($eventId, Request $request)
+    {
             $request->validate([
                 'round_no' => 'required|integer|min:1'
             ]);
     
             $roundNo = $request->round_no;
-
+    
             $activeRound = Active::where('event_id', $eventId)
                 ->where('round_no', $roundNo)
                 ->first();
@@ -152,7 +154,7 @@ class RoundController extends Controller
                     'message' => 'Active round not found'
                 ]);
             }
-
+    
             $assignedJudges = Assign::where('event_id', $eventId)
                 ->with('user')
                 ->get();
@@ -173,7 +175,7 @@ class RoundController extends Controller
                     'message' => 'No contestants found in this round'
                 ]);
             }
-
+    
             $criteria = Criteria::where('active_id', $activeRound->id)
                 ->where('is_active', 1)
                 ->get();
@@ -183,8 +185,9 @@ class RoundController extends Controller
                     'message' => 'No criteria found for this round'
                 ]);
             }
-
+    
             $recordsCreated = 0;
+            $createdRecords = [];
             
             foreach ($assignedJudges as $assign) {
                 foreach ($contestantsInRound as $contestant) {
@@ -200,21 +203,28 @@ class RoundController extends Controller
                                 ->first();
     
                             if (!$existingRecord) {
-                                Tabulation::create([
+                                $data = Tabulation::create([
                                     'round_id' => $round->id,
                                     'user_id' => $assign->user_id,
                                     'criteria_id' => $criterion->id,
                                     'score' => 0,
                                     'is_lock' => false
                                 ]);
+    
+                                $createdRecords[] = $data;
                                 $recordsCreated++;
                             }
                         }
                     }
                 }
             }
-
-            return redirect()->back()->with('success', 'Criteria populated successfully');
+    
+            // Broadcast the last created record (which will include all data)
+            if (!empty($createdRecords)) {
+                event(new TabulationBroadcast($createdRecords[count($createdRecords) - 1]));
+            }
+    
+            return redirect()->back()->with('success', "Tabulation populated successfully! {$recordsCreated} records created.");
     }
 
     public function index()

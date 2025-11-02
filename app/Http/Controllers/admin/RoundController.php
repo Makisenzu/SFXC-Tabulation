@@ -5,8 +5,10 @@ namespace App\Http\Controllers\admin;
 use App\Models\Event;
 use App\Models\Round;
 use App\Models\Active;
+use App\Models\Assign;
 use App\Models\Criteria;
 use App\Models\Contestant;
+use App\Models\Tabulation;
 use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 
@@ -135,76 +137,84 @@ class RoundController extends Controller
     }
 
     public function populateTabulationCriteria($eventId, Request $request){
-        try {
             $request->validate([
                 'round_no' => 'required|integer|min:1'
             ]);
     
             $roundNo = $request->round_no;
-    
+
             $activeRound = Active::where('event_id', $eventId)
                 ->where('round_no', $roundNo)
                 ->first();
     
             if (!$activeRound) {
-                return redirect()->back()->withErrors([
+                return back()->withErrors([
                     'message' => 'Active round not found'
                 ]);
             }
-    
-            $contestants = Contestant::whereHas('rounds', function($query) use ($activeRound) {
-                    $query->where('active_id', $activeRound->id);
-                })
-                ->with(['event'])
+
+            $assignedJudges = Assign::where('event_id', $eventId)
+                ->with('user')
                 ->get();
     
+            if ($assignedJudges->isEmpty()) {
+                return back()->withErrors([
+                    'message' => 'No judges assigned to this event'
+                ]);
+            }
+    
+            $contestantsInRound = Contestant::whereHas('rounds', function($query) use ($activeRound) {
+                    $query->where('active_id', $activeRound->id);
+                })
+                ->get();
+    
+            if ($contestantsInRound->isEmpty()) {
+                return back()->withErrors([
+                    'message' => 'No contestants found in this round'
+                ]);
+            }
+
             $criteria = Criteria::where('active_id', $activeRound->id)
                 ->where('is_active', 1)
                 ->get();
     
-            $judgeData = [
-                'active_round' => [
-                    'round_no' => $activeRound->round_no,
-                    'event_name' => $activeRound->event->event_name ?? 'Unknown Event',
-                    'is_active' => $activeRound->is_active
-                ],
-                'contestants' => $contestants->map(function($contestant) {
-                    return [
-                        'id' => $contestant->id,
-                        'contestant_name' => $contestant->contestant_name,
-                        'sequence_no' => $contestant->sequence_no,
-                        'photo' => $contestant->photo,
-                        'is_active' => $contestant->is_active
-                    ];
-                }),
-                'criteria' => $criteria->map(function($criterion) {
-                    return [
-                        'id' => $criterion->id,
-                        'criteria_desc' => $criterion->criteria_desc,
-                        'definition' => $criterion->definition,
-                        'percentage' => $criterion->percentage,
-                        'max_percentage' => $criterion->max_percentage
-                    ];
-                }),
-                'summary' => [
-                    'total_contestants' => $contestants->count(),
-                    'total_criteria' => $criteria->count(),
-                    'total_percentage' => $criteria->sum('percentage')
-                ]
-            ];
+            if ($criteria->isEmpty()) {
+                return back()->withErrors([
+                    'message' => 'No criteria found for this round'
+                ]);
+            }
+
+            $recordsCreated = 0;
+            
+            foreach ($assignedJudges as $assign) {
+                foreach ($contestantsInRound as $contestant) {
+                    $round = Round::where('contestant_id', $contestant->id)
+                        ->where('active_id', $activeRound->id)
+                        ->first();
     
-            // For Inertia, use redirect back with data
-            return redirect()->back()->with([
-                'success' => true,
-                'data' => $judgeData,
-                'message' => 'Tabulation criteria populated successfully for judges'
-            ]);
+                    if ($round) {
+                        foreach ($criteria as $criterion) {
+                            $existingRecord = Tabulation::where('round_id', $round->id)
+                                ->where('user_id', $assign->user_id)
+                                ->where('criteria_id', $criterion->id)
+                                ->first();
     
-        } catch (\Exception $e) {
-            return redirect()->back()->withErrors([
-                'message' => 'Failed to populate tabulation criteria: ' . $e->getMessage()
-            ]);
-        }
+                            if (!$existingRecord) {
+                                Tabulation::create([
+                                    'round_id' => $round->id,
+                                    'user_id' => $assign->user_id,
+                                    'criteria_id' => $criterion->id,
+                                    'score' => 0,
+                                    'is_lock' => false
+                                ]);
+                                $recordsCreated++;
+                            }
+                        }
+                    }
+                }
+            }
+
+            return redirect()->back()->with('success', 'Criteria populated successfully');
     }
 
     public function index()

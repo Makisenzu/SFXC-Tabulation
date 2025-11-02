@@ -27,16 +27,7 @@ class JudgeController extends Controller
                 }])
                 ->first();
 
-            if (!$assignedEvent || !$assignedEvent->event) {
-                return response()->json([
-                    'success' => false,
-                    'error' => 'No active event assigned to this judge'
-                ], 404);
-            }
-
             $event = $assignedEvent->event;
-
-            // Get active round for this event
             $activeRound = Active::where('event_id', $event->id)
                 ->where('is_active', true)
                 ->first();

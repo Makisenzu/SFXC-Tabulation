@@ -22,7 +22,7 @@ class JudgeController extends Controller
         try {
             $judge = Auth::user();
             
-            // Get assigned event for this judge
+            // get judges event
             $assignedEvent = Assign::where('user_id', $judge->id)
                 ->with(['event' => function($query) {
                     $query->where('is_active', true);
@@ -38,7 +38,7 @@ class JudgeController extends Controller
     
             $event = $assignedEvent->event;
     
-            // 1. Check active round
+            // check active round
             $activeRound = Active::where('event_id', $event->id)
                 ->where('is_active', true)
                 ->first();
@@ -50,14 +50,14 @@ class JudgeController extends Controller
                 ], 404);
             }
     
-            // 2. Check if tabulation table has data for this judge and active round
+            // checking data
             $hasTabulationData = Tabulation::where('user_id', $judge->id)
                 ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
                 })
                 ->exists();
     
-            // If no data in tabulation table, return empty response
+            // empty response
             if (!$hasTabulationData) {
                 return response()->json([
                     'success' => true,
@@ -73,7 +73,7 @@ class JudgeController extends Controller
                             'round_no' => $activeRound->round_no,
                             'is_active' => $activeRound->is_active,
                         ],
-                        'contestants' => [], // Empty array since no tabulation data
+                        'contestants' => [],
                         'criteria_summary' => [
                             'total_criteria' => 0,
                             'total_percentage' => 0
@@ -86,7 +86,7 @@ class JudgeController extends Controller
                 ]);
             }
     
-            // 3. Get criteria through tabulation table
+            //criteria query
             $criteria = Criteria::where('active_id', $activeRound->id)
                 ->where('is_active', 1)
                 ->whereHas('tabulations', function($query) use ($judge, $activeRound) {
@@ -98,7 +98,7 @@ class JudgeController extends Controller
                 ->orderBy('id')
                 ->get();
     
-            // 4. Get contestants through tabulation table
+            //contestants query
             $contestants = Contestant::whereHas('rounds.tabulations', function($query) use ($judge, $activeRound) {
                     $query->where('user_id', $judge->id)
                           ->whereHas('round', function($q) use ($activeRound) {
@@ -111,7 +111,7 @@ class JudgeController extends Controller
                 ->orderBy('sequence_no')
                 ->get();
     
-            // 5. Get existing scores from tabulation table
+            // 5. existing scores
             $existingScores = Tabulation::where('user_id', $judge->id)
                 ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
@@ -120,7 +120,7 @@ class JudgeController extends Controller
                 ->get()
                 ->groupBy('round.contestant_id');
     
-            // Format the response data
+            //  response data
             $formattedData = [
                 'event' => [
                     'id' => $event->id,
@@ -136,7 +136,7 @@ class JudgeController extends Controller
                 'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $activeRound) {
                     $contestantScores = $existingScores->get($contestant->id, collect());
                     
-                    // Get the round ID for this contestant in active round
+                    //round iD for contestant round
                     $round = $contestant->rounds->firstWhere('active_id', $activeRound->id);
                     
                     $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores) {

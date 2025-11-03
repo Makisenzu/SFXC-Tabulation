@@ -23,7 +23,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
     const fetchTabulationData = useCallback(async () => {
         try {
             setLoading(true);
-            console.log('🟡 Fetching tabulation data from /judge/tabulation-data');
             
             const response = await fetch('/judge/tabulation-data');
             
@@ -32,11 +31,9 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
             }
             
             const result = await response.json();
-            console.log('🟡 API Response:', result);
             
             if (result.success) {
                 setTabulationData(result.data);
-                setupBroadcastListener(result.data);
             } else {
                 throw new Error(result.error || 'Failed to fetch tabulation data');
             }
@@ -48,150 +45,35 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         }
     }, []);
 
-    // Setup real-time broadcasting listener
-    const setupBroadcastListener = useCallback((data) => {
-        console.log('🟡 Setting up broadcast listener with data:', data);
-        
-        if (!data || !data.event || !data.active_round) {
-            console.log('🔴 No data available for broadcast setup');
-            return;
-        }
-    
-        const eventId = data.event.id;
-        const roundNo = data.active_round.round_no;
-    
-        console.log(`🟡 Setting up broadcast listener for event ${eventId}, round ${roundNo}`);
-
-        // Check Echo connection first
-        if (!window.Echo) {
-            console.error('🔴 Echo is not available in window object');
-            return;
-        }
-    
-        // Clean up previous channel
-        if (currentChannel) {
-            console.log(`🟡 Leaving previous channel: ${currentChannel}`);
-            window.Echo.leave(currentChannel);
-        }
-    
-        // Join new channel
-        const channelName = `tabulation.${eventId}.${roundNo}`;
-        console.log(`🟡 Joining new channel: ${channelName}`);
-        
-        setCurrentChannel(channelName);
-
+    const reFetchTabulationData = useCallback(async () => {
         try {
-            // Subscribe to the private channel
-            const channel = window.Echo.private(channelName);
+            const response = await fetch('/judge/tabulation-data');
             
-            // Listen for tabulation updates
-            channel.listen('.tabulation.updated', (e) => {
-                console.log('🎯 TABULATION BROADCAST RECEIVED!', e);
-                console.log('🎯 Full data:', e.tabulationData);
-                console.log('🎯 Contestants:', e.tabulationData?.contestants);
-                console.log('🎯 Round:', e.tabulationData?.active_round);
-                
-                if (e.tabulationData) {
-                    // Update the state with new data
-                    setTabulationData(e.tabulationData);
-                    showNotification(`Round ${e.tabulationData.active_round.round_no} updated with ${e.tabulationData.contestants.length} contestants!`, 'success');
-                    
-                    // Clear selected contestant
-                    if (onContestantSelect) {
-                        onContestantSelect(null);
-                    }
-                } else {
-                    console.error('🔴 No tabulationData in broadcast event');
-                }
-            });
-            
-            // Listen for subscription success
-            channel.subscribed(() => {
-                console.log(`✅ Successfully subscribed to channel: ${channelName}`);
-                showNotification(`Connected to Round ${roundNo} real-time updates`, 'success');
-            });
-            
-            // Listen for errors
-            channel.error((error) => {
-                console.error('🔴 Broadcast channel error:', error);
-                showNotification('Connection issue with real-time updates', 'error');
-            });
-
-            console.log(`✅ Now listening on private channel: ${channelName}`);
-            
-        } catch (error) {
-            console.error('🔴 Error setting up channel listener:', error);
-            showNotification('Failed to setup real-time connection', 'error');
-        }
-    }, [currentChannel, onContestantSelect]);
-
-    // Show notification function
-    const showNotification = useCallback((message, type = 'info') => {
-        // Remove any existing notifications first
-        const existingNotifications = document.querySelectorAll('[data-tabulation-notification]');
-        existingNotifications.forEach(notification => notification.remove());
-
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.setAttribute('data-tabulation-notification', 'true');
-        notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border-l-4 ${
-            type === 'success' 
-                ? 'bg-green-50 border-green-500 text-green-700' 
-                : type === 'error'
-                ? 'bg-red-50 border-red-500 text-red-700'
-                : 'bg-blue-50 border-blue-500 text-blue-700'
-        }`;
-        
-        notification.innerHTML = `
-            <div class="flex items-center">
-                <div class="flex-shrink-0">
-                    ${type === 'success' ? 
-                        '<svg class="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>' :
-                        type === 'error' ?
-                        '<svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>' :
-                        '<svg class="w-5 h-5 text-blue-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
-                    }
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm font-medium">${message}</p>
-                </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="ml-auto text-gray-400 hover:text-gray-600">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
-                </button>
-            </div>
-        `;
-
-        document.body.appendChild(notification);
-
-        // Remove notification after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        }, 5000);
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                setTabulationData(result.data);
+            } else {
+                throw new Error(result.error || 'Failed to fetch tabulation data');
+            }
+        } catch (err) {
+            console.error('Error re-fetching tabulation data:', err);
+        }
     }, []);
 
     // Initial data fetch on component mount
     useEffect(() => {
-        console.log('🟡 JudgeLayout mounted, fetching initial data...');
         fetchTabulationData();
     }, [fetchTabulationData]);
-
-    // Monitor tabulationData changes
-    useEffect(() => {
-        console.log('🟢 STATE UPDATE - tabulationData:', tabulationData);
-        console.log('🟢 Contestants array:', tabulationData?.contestants);
-        console.log('🟢 Contestants count:', tabulationData?.contestants?.length);
-        console.log('🟢 Current round:', tabulationData?.active_round?.round_no);
-    }, [tabulationData]);
 
     // Cleanup broadcasting on unmount
     useEffect(() => {
         return () => {
             if (window.Echo && currentChannel) {
-                console.log(`🟡 Cleaning up channel: ${currentChannel}`);
                 window.Echo.leave(currentChannel);
             }
         };
@@ -204,11 +86,13 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         return `/storage/${photoPath}`;
     };
 
-    const handleContestantSelect = (contestant) => {
+    const handleContestantSelect = useCallback((contestant) => {
         if (onContestantSelect) {
             onContestantSelect(contestant);
         }
-    };
+    
+        reFetchTabulationData();
+    }, [onContestantSelect, reFetchTabulationData]);
 
     const handleRefresh = () => {
         setError(null);
@@ -221,19 +105,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
-            {/* Debug Info - Remove in production */}
-            <div className="fixed bottom-4 left-4 z-50 bg-black bg-opacity-80 text-white p-3 rounded-lg text-xs">
-                <div>Event: {eventName || 'none'}</div>
-                <div>Round: {currentRound || 'none'}</div>
-                <div>Contestants: {contestants.length}</div>
-                <div>Channel: {currentChannel || 'none'}</div>
-                <button 
-                    onClick={handleRefresh}
-                    className="mt-1 px-2 py-1 bg-blue-600 text-white rounded text-xs"
-                >
-                    Refresh
-                </button>
-            </div>
 
             <div className="hidden md:flex md:flex-col w-[500px] bg-white border-r border-gray-200">
                 <div className="flex items-center gap-3 p-4 border-b border-gray-200">
@@ -243,18 +114,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                             <div>
                                 <h1 className="text-lg font-bold text-gray-900">SFXC</h1>
                                 <p className="text-xs text-gray-500">Tabulation System</p>
-                                {currentRound && (
-                                    <div className="mt-1">
-                                        <span className="inline-block px-2 py-1 bg-green-100 text-green-800 text-xs font-bold rounded">
-                                            Round {currentRound}
-                                        </span>
-                                        {eventName && (
-                                            <p className="text-xs text-gray-600 mt-1 truncate">
-                                                {eventName}
-                                            </p>
-                                        )}
-                                    </div>
-                                )}
                             </div>
                             <button
                                 onClick={handleRefresh}

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { router } from '@inertiajs/react';
+import appLogo from '@/images/logo.png';
 import axios from 'axios';
 
 
@@ -279,15 +280,6 @@ const Table = ({ selectedContestant }) => {
                                                                 <div className="text-2xl text-gray-800 font-bold mt-4">
                                                                     {selectedContestant.contestant_name}
                                                                 </div>
-                                                                <div className="mt-6 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
-                                                                    <div className="text-3xl font-bold text-blue-600">
-                                                                        {calculateTotalPercentage()}%
-                                                                    </div>
-                                                                    <div className="text-lg text-gray-600">Total Percentage</div>
-                                                                    <div className="text-xl font-bold text-gray-800 mt-2">
-                                                                        Score: {calculateTotalScore()}
-                                                                    </div>
-                                                                </div>
                                                             </div>
                                                         </td>
                                                     )}
@@ -338,18 +330,24 @@ const Table = ({ selectedContestant }) => {
                     )}
                 </div>
             ) : (
-                <div className="h-full w-full flex items-center justify-center bg-white">
-                    <div className="text-center">
-                        <div className="text-9xl mb-10">👑</div>
-                        <h3 className="text-4xl font-bold text-gray-700 mb-8">No Contestant Selected</h3>
-                        <p className="text-2xl text-gray-600">
-                            Please select a contestant from the sidebar to view scoring details
-                        </p>
-                    </div>
+            <div className="h-full w-full flex items-center justify-center bg-white">
+                <div className="flex flex-col items-center text-center">
+                    <img
+                        src={appLogo}
+                        alt="App Logo"
+                        className="h-26 w-auto mb-10"
+                    />
+                    <h3 className="text-4xl font-bold text-gray-700 mb-8">
+                        No Contestant Selected
+                    </h3>
+                    <p className="text-2xl text-gray-600">
+                        Select a contestant to view scoring details
+                    </p>
                 </div>
-            )}
-        </div>
-    );
-};
+            </div>
+                        )}
+                    </div>
+                );
+            };
 
 export default Table;

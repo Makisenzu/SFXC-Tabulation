@@ -22,10 +22,11 @@ class JudgeController extends Controller
         try {
             $judge = Auth::user();
             
-            // get judges event
+            // Optimized: Single query with eager loading
             $assignedEvent = Assign::where('user_id', $judge->id)
                 ->with(['event' => function($query) {
-                    $query->where('is_active', true);
+                    $query->where('is_active', true)
+                          ->select('id', 'event_name', 'event_type', 'description');
                 }])
                 ->first();
     
@@ -38,9 +39,10 @@ class JudgeController extends Controller
     
             $event = $assignedEvent->event;
     
-            // check active round
+            // Optimized: Select only needed columns
             $activeRound = Active::where('event_id', $event->id)
                 ->where('is_active', true)
+                ->select('id', 'event_id', 'round_no', 'is_active')
                 ->first();
     
             if (!$activeRound) {
@@ -50,14 +52,13 @@ class JudgeController extends Controller
                 ], 404);
             }
     
-            // checking data
+            // Optimized: Check existence efficiently
             $hasTabulationData = Tabulation::where('user_id', $judge->id)
                 ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
                 })
                 ->exists();
     
-            // empty response
             if (!$hasTabulationData) {
                 return response()->json([
                     'success' => true,
@@ -86,7 +87,7 @@ class JudgeController extends Controller
                 ]);
             }
     
-            //criteria query
+            // Optimized: Select only needed columns and simplified query
             $criteria = Criteria::where('active_id', $activeRound->id)
                 ->where('is_active', 1)
                 ->whereHas('tabulations', function($query) use ($judge, $activeRound) {
@@ -95,10 +96,11 @@ class JudgeController extends Controller
                               $q->where('active_id', $activeRound->id);
                           });
                 })
+                ->select('id', 'criteria_desc', 'definition', 'percentage', 'max_percentage', 'active_id')
                 ->orderBy('id')
                 ->get();
     
-            //contestants query
+            // Optimized: Eager load with specific columns
             $contestants = Contestant::whereHas('rounds.tabulations', function($query) use ($judge, $activeRound) {
                     $query->where('user_id', $judge->id)
                           ->whereHas('round', function($q) use ($activeRound) {
@@ -106,21 +108,25 @@ class JudgeController extends Controller
                           });
                 })
                 ->with(['rounds' => function($query) use ($activeRound) {
-                    $query->where('active_id', $activeRound->id);
+                    $query->where('active_id', $activeRound->id)
+                          ->select('id', 'contestant_id', 'active_id');
                 }])
+                ->select('id', 'contestant_name', 'photo', 'sequence_no')
                 ->orderBy('sequence_no')
                 ->get();
     
-            // 5. existing scores
+            // Optimized: Fetch scores with specific columns only
             $existingScores = Tabulation::where('user_id', $judge->id)
                 ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
                 })
-                ->with(['criteria', 'round.contestant'])
+                ->with(['round' => function($query) {
+                    $query->select('id', 'contestant_id', 'active_id');
+                }])
+                ->select('id', 'round_id', 'criteria_id', 'score', 'is_lock')
                 ->get()
                 ->groupBy('round.contestant_id');
     
-            //  response data
             $formattedData = [
                 'event' => [
                     'id' => $event->id,
@@ -135,8 +141,6 @@ class JudgeController extends Controller
                 ],
                 'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $activeRound) {
                     $contestantScores = $existingScores->get($contestant->id, collect());
-                    
-                    //round iD for contestant round
                     $round = $contestant->rounds->firstWhere('active_id', $activeRound->id);
                     
                     $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores) {

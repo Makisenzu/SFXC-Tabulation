@@ -186,8 +186,7 @@ class JudgeController extends Controller
             ], 500);
         }
     }
-    public function updateScore(Request $request)
-{
+    public function updateScore(Request $request){
     try {
         $judge = Auth::user();
         
@@ -220,7 +219,10 @@ class JudgeController extends Controller
         }
 
         // Return a simple success response for Inertia
-        return response()->json(['success' => true]);
+        return response()->json([
+            'success' => true,
+            'tabulation' => $tabulation
+        ]);
 
     } catch (\Exception $e) {
         return response()->json([

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { router } from '@inertiajs/react';
+import axios from 'axios';
+
 
 const Table = ({ selectedContestant }) => {
     const [scores, setScores] = useState({});
@@ -24,7 +26,7 @@ const Table = ({ selectedContestant }) => {
             setSaving(true);
             console.log('🟡 Updating score:', { criteriaId, score, tabulationId });
 
-            await router.patch('/judge/update-score', {
+            await axios.patch('/judge/update-score', {
                 criteria_id: criteriaId,
                 score: score === '' ? 0 : parseFloat(score),
                 tabulation_id: tabulationId,

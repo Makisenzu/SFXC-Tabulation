@@ -21,41 +21,97 @@ class JudgeController extends Controller
      public function getTabulationData(Request $request){
         try {
             $judge = Auth::user();
+            
+            // Get assigned event for this judge
             $assignedEvent = Assign::where('user_id', $judge->id)
                 ->with(['event' => function($query) {
                     $query->where('is_active', true);
                 }])
                 ->first();
-
+    
+            if (!$assignedEvent || !$assignedEvent->event) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No active assigned event found'
+                ], 404);
+            }
+    
             $event = $assignedEvent->event;
+    
+            // 1. Check active round
             $activeRound = Active::where('event_id', $event->id)
                 ->where('is_active', true)
                 ->first();
-
+    
             if (!$activeRound) {
                 return response()->json([
                     'success' => false,
                     'error' => 'No active round found for this event'
                 ], 404);
             }
-
-            // Get contestants in this active round
-            $contestants = Contestant::whereHas('rounds', function($query) use ($activeRound) {
+    
+            // 2. Check if tabulation table has data for this judge and active round
+            $hasTabulationData = Tabulation::where('user_id', $judge->id)
+                ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
+                })
+                ->exists();
+    
+            // If no data in tabulation table, return empty response
+            if (!$hasTabulationData) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'event' => [
+                            'id' => $event->id,
+                            'event_name' => $event->event_name,
+                            'event_type' => $event->event_type,
+                            'description' => $event->description,
+                        ],
+                        'active_round' => [
+                            'id' => $activeRound->id,
+                            'round_no' => $activeRound->round_no,
+                            'is_active' => $activeRound->is_active,
+                        ],
+                        'contestants' => [], // Empty array since no tabulation data
+                        'criteria_summary' => [
+                            'total_criteria' => 0,
+                            'total_percentage' => 0
+                        ],
+                        'judge_info' => [
+                            'judge_id' => $judge->id,
+                            'judge_name' => $judge->username
+                        ]
+                    ]
+                ]);
+            }
+    
+            // 3. Get criteria through tabulation table
+            $criteria = Criteria::where('active_id', $activeRound->id)
+                ->where('is_active', 1)
+                ->whereHas('tabulations', function($query) use ($judge, $activeRound) {
+                    $query->where('user_id', $judge->id)
+                          ->whereHas('round', function($q) use ($activeRound) {
+                              $q->where('active_id', $activeRound->id);
+                          });
+                })
+                ->orderBy('id')
+                ->get();
+    
+            // 4. Get contestants through tabulation table
+            $contestants = Contestant::whereHas('rounds.tabulations', function($query) use ($judge, $activeRound) {
+                    $query->where('user_id', $judge->id)
+                          ->whereHas('round', function($q) use ($activeRound) {
+                              $q->where('active_id', $activeRound->id);
+                          });
                 })
                 ->with(['rounds' => function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
                 }])
                 ->orderBy('sequence_no')
                 ->get();
-
-            // Get criteria for this active round
-            $criteria = Criteria::where('active_id', $activeRound->id)
-                ->where('is_active', 1)
-                ->orderBy('id')
-                ->get();
-
-            // Get existing scores for this judge from tabulations table
+    
+            // 5. Get existing scores from tabulation table
             $existingScores = Tabulation::where('user_id', $judge->id)
                 ->whereHas('round', function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id);
@@ -63,9 +119,9 @@ class JudgeController extends Controller
                 ->with(['criteria', 'round.contestant'])
                 ->get()
                 ->groupBy('round.contestant_id');
-
+    
             // Format the response data
-            $tabulationData = [
+            $formattedData = [
                 'event' => [
                     'id' => $event->id,
                     'event_name' => $event->event_name,
@@ -77,10 +133,13 @@ class JudgeController extends Controller
                     'round_no' => $activeRound->round_no,
                     'is_active' => $activeRound->is_active,
                 ],
-                'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $judge) {
+                'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $activeRound) {
                     $contestantScores = $existingScores->get($contestant->id, collect());
                     
-                    $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores, $contestant) {
+                    // Get the round ID for this contestant in active round
+                    $round = $contestant->rounds->firstWhere('active_id', $activeRound->id);
+                    
+                    $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores) {
                         $scoreRecord = $contestantScores->firstWhere('criteria_id', $criterion->id);
                         
                         return [
@@ -94,13 +153,13 @@ class JudgeController extends Controller
                             'is_lock' => $scoreRecord ? $scoreRecord->is_lock : false
                         ];
                     });
-
+    
                     return [
                         'id' => $contestant->id,
                         'contestant_name' => $contestant->contestant_name,
                         'photo' => $contestant->photo,
                         'sequence_no' => $contestant->sequence_no,
-                        'round_id' => $contestant->rounds->first()->id,
+                        'round_id' => $round ? $round->id : null,
                         'criteria' => $criteriaWithScores,
                         'total_score' => $criteriaWithScores->sum('score')
                     ];
@@ -111,15 +170,15 @@ class JudgeController extends Controller
                 ],
                 'judge_info' => [
                     'judge_id' => $judge->id,
-                    'judge_name' => $judge->name
+                    'judge_name' => $judge->username
                 ]
             ];
-
+    
             return response()->json([
                 'success' => true,
-                'data' => $tabulationData
+                'data' => $formattedData
             ]);
-
+    
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

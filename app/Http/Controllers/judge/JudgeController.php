@@ -186,10 +186,49 @@ class JudgeController extends Controller
             ], 500);
         }
     }
-    public function index()
-    {
-        //
+    public function updateScore(Request $request)
+{
+    try {
+        $judge = Auth::user();
+        
+        $request->validate([
+            'criteria_id' => 'required|exists:criterias,id',
+            'score' => 'required|numeric|min:0|max:10',
+            'tabulation_id' => 'nullable|exists:tabulations,id',
+            'contestant_id' => 'required|exists:contestants,id',
+            'round_id' => 'required|exists:rounds,id'
+        ]);
+
+        // If tabulation_id is provided, update existing record
+        if ($request->tabulation_id) {
+            $tabulation = Tabulation::where('id', $request->tabulation_id)
+                ->where('user_id', $judge->id)
+                ->firstOrFail();
+
+            $tabulation->update([
+                'score' => $request->score
+            ]);
+        } else {
+            // Create new record if it doesn't exist
+            $tabulation = Tabulation::create([
+                'round_id' => $request->round_id,
+                'user_id' => $judge->id,
+                'criteria_id' => $request->criteria_id,
+                'score' => $request->score,
+                'is_lock' => false
+            ]);
+        }
+
+        // Return a simple success response for Inertia
+        return response()->json(['success' => true]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => 'Failed to update score: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Show the form for creating a new resource.

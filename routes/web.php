@@ -99,6 +99,8 @@ Route::middleware(['auth', 'role:Judge'])->group(function () {
     })->name('judge.dashboard');
 
     Route::get('/judge/tabulation-data', [JudgeController::class, 'getTabulationData']);
+
+    Route::patch('/judge/update-score', [JudgeController::class, 'updateScore'])->name('judge.update-score');
 });
 
 Route::middleware('auth')->group(function () {

@@ -232,14 +232,6 @@ const Table = ({ selectedContestant }) => {
         <div className="h-full w-full bg-gray-50">
             {selectedContestant ? (
                 <div className="h-full w-full bg-white">
-                    {/* Saving Indicator */}
-                    {saving && (
-                        <div className="fixed top-4 right-4 z-50 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                            Saving...
-                        </div>
-                    )}
-
                     {loading ? (
                         <div className="flex justify-center items-center h-full">
                             <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-blue-600"></div>

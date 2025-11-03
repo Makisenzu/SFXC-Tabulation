@@ -16,7 +16,7 @@ return new class extends Migration
             $table->foreignId('round_id')->constrained('rounds')->cascadeOnDelete();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('criteria_id')->constrained('criterias')->cascadeOnDelete();
-            $table->float('score');
+            $table->float('score')->default(0);
             $table->integer('is_lock')->default(0);
             $table->timestamps();
         });

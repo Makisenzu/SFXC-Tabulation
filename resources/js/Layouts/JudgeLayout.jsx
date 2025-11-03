@@ -334,9 +334,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                                             <p className="text-2xl font-bold text-gray-900 truncate mb-2">
                                                 {contestant.contestant_name}
                                             </p>
-                                            <p className="text-sm text-gray-600">
-                                                Total Score: {contestant.total_score}
-                                            </p>
                                         </div>
                                     </div>
                                 ))}

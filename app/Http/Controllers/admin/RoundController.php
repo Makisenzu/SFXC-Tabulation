@@ -218,11 +218,7 @@ class RoundController extends Controller
                     }
                 }
             }
-    
-            // Broadcast the last created record (which will include all data)
-            if (!empty($createdRecords)) {
-                event(new TabulationBroadcast($createdRecords[count($createdRecords) - 1]));
-            }
+
     
             return redirect()->back()->with('success', "Tabulation populated successfully! {$recordsCreated} records created.");
     }

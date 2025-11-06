@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
+import ScoreTables from './components/ScoreTables';
 
 export default function AdminDashboard() {
     return (
@@ -12,15 +13,11 @@ export default function AdminDashboard() {
         >
             <Head title="SFXC Tabulation" />
 
-            {/* <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                    <div className="overflow-hidden bg-white shadow-sm sm:rounded-lg">
-                        <div className="p-6 text-gray-900">
-                            You're logged in!
-                        </div>
-                    </div>
+            <div className="py-6">
+                <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                    <ScoreTables/>
                 </div>
-            </div> */}
+            </div>
         </AuthenticatedLayout>
     );
 }

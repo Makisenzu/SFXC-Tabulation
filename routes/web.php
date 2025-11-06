@@ -9,6 +9,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\admin\RoundController;
+use App\Http\Controllers\admin\ScoreController;
 use App\Http\Controllers\judge\JudgeController;
 
 Route::get('/admin', function() {
@@ -91,6 +92,13 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::delete('/contestant-rounds/{contestantId}', [RoundController::class, 'deleteContestant']);
     Route::patch('/events/{id}/set-active-round', [RoundController::class, 'setActiveRound']);
     Route::post('/events/{id}/populate-criteria', [RoundController::class, 'populateTabulationCriteria']);
+
+    //scores and rankings
+    Route::get('/getJudgesByEvent/{eventId}', [ScoreController::class, 'getJudgesByEvent']);
+    Route::get('/getCriteriaByRound/{eventId}/{roundNo}', [ScoreController::class, 'getCriteriaByRound']);
+    Route::get('/getScoresByRound/{eventId}/{roundNo}', [ScoreController::class, 'getScoresByRound']);
+    Route::get('/getTabulationDataByRound/{eventId}/{roundNo}', [ScoreController::class, 'getTabulationDataByRound']);
+    Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

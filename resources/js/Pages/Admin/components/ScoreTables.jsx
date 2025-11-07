@@ -4,7 +4,11 @@ import {
     Medal,
     Award,
     Filter,
-    RefreshCw
+    RefreshCw,
+    Printer,
+    FileDown,
+    FileSpreadsheet,
+    X
 } from 'lucide-react';
 
 const ScoreTables = () => {
@@ -17,6 +21,8 @@ const ScoreTables = () => {
     const [criteria, setCriteria] = useState([]);
     const [scores, setScores] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [showPrintModal, setShowPrintModal] = useState(false);
+    const [generalData, setGeneralData] = useState([]);
 
     // Fetch events on component mount
     useEffect(() => {
@@ -291,6 +297,338 @@ const ScoreTables = () => {
         }
     };
 
+    // Print General Tabulated Result
+    const printGeneralTabulation = () => {
+        // Debug: Check data availability
+        console.log('Print Debug:', {
+            contestants: contestants.length,
+            judges: judges.length,
+            criteria: criteria.length,
+            scores: scores.length,
+            contestantsData: contestants
+        });
+
+        if (contestants.length === 0) {
+            alert('No contestants data available. Please select an event and round first.');
+            return;
+        }
+
+        if (judges.length === 0) {
+            alert('No judges data available. Please ensure judges are assigned to this event.');
+            return;
+        }
+
+        // Calculate general tabulation data
+        const data = contestants.map(contestant => {
+            console.log('Processing contestant:', contestant);
+            
+            const judgeData = judges.map(judge => {
+                const judgeScores = scores.filter(
+                    s => s.judge_id === judge.id && s.contestant_id === contestant.id
+                );
+
+                // Calculate percentage for this judge
+                let totalPercentage = 0;
+                criteria.forEach(criterion => {
+                    const score = judgeScores.find(s => s.criteria_id === criterion.id);
+                    if (score && score.score) {
+                        const weightValue = parseInt(criterion.percentage) / 100;
+                        totalPercentage += (parseFloat(score.score) / 10) * weightValue * 100;
+                    }
+                });
+
+                return {
+                    judgeId: judge.id,
+                    judgeName: judge.name,
+                    percentage: totalPercentage
+                };
+            });
+
+            // Calculate average percentage across all judges
+            const avgPercentage = judgeData.length > 0
+                ? judgeData.reduce((sum, j) => sum + j.percentage, 0) / judgeData.length
+                : 0;
+
+            return {
+                id: contestant.id,
+                sequence_no: contestant.sequence_no || 0,
+                name: contestant.contestant_name || contestant.name || 'Unknown',
+                judgeData,
+                avgPercentage
+            };
+        });
+
+        console.log('General Data:', data);
+
+        // Calculate ranks for each judge
+        judges.forEach(judge => {
+            const sortedByJudge = [...data].sort((a, b) => {
+                const aPercentage = a.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                const bPercentage = b.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                return bPercentage - aPercentage;
+            });
+
+            let rank = 1;
+            let previousPercentage = null;
+            let sameRankCount = 0;
+
+            sortedByJudge.forEach((contestant, index) => {
+                const judgePercentage = contestant.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                
+                if (previousPercentage !== null && judgePercentage < previousPercentage) {
+                    rank += sameRankCount;
+                    sameRankCount = 1;
+                } else if (previousPercentage === judgePercentage) {
+                    sameRankCount++;
+                } else {
+                    sameRankCount = 1;
+                }
+                
+                previousPercentage = judgePercentage;
+                
+                const judgeDataItem = contestant.judgeData.find(j => j.judgeId === judge.id);
+                if (judgeDataItem) {
+                    judgeDataItem.rank = rank;
+                }
+            });
+        });
+
+        // Calculate overall ranks based on average percentage
+        const sortedByAvg = [...data].sort((a, b) => b.avgPercentage - a.avgPercentage);
+        
+        let rank = 1;
+        let previousPercentage = null;
+        let sameRankCount = 0;
+
+        sortedByAvg.forEach((contestant, index) => {
+            if (previousPercentage !== null && contestant.avgPercentage < previousPercentage) {
+                rank += sameRankCount;
+                sameRankCount = 1;
+            } else if (previousPercentage === contestant.avgPercentage) {
+                sameRankCount++;
+            } else {
+                sameRankCount = 1;
+            }
+            
+            previousPercentage = contestant.avgPercentage;
+            contestant.overallRank = rank;
+        });
+
+        // Sort by overall rank for display
+        data.sort((a, b) => a.overallRank - b.overallRank);
+
+        // Set data and show modal
+        setGeneralData(data);
+        setShowPrintModal(true);
+    };
+
+    // Export functions
+    const exportToCSV = () => {
+        const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+        const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+        
+        let csv = `General Tabulated Result - ${eventName} - Round ${roundName}\n\n`;
+        
+        // Headers
+        csv += 'NO,CONTESTANT,';
+        judges.forEach(judge => {
+            csv += `${judge.name} % SCORE,${judge.name} RANK,`;
+        });
+        csv += 'AVG PERCENTAGE,RANK\n';
+        
+        // Data rows
+        generalData.forEach((contestant, index) => {
+            csv += `${index + 1},${contestant.name},`;
+            contestant.judgeData.forEach(judge => {
+                csv += `${judge.percentage.toFixed(2)}%,${judge.rank},`;
+            });
+            csv += `${contestant.avgPercentage.toFixed(2)}%,${contestant.overallRank}\n`;
+        });
+        
+        // Download
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `General_Tabulated_Result_${eventName}_Round_${roundName}.csv`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const exportToExcel = () => {
+        const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+        const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+        
+        let html = `
+            <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+            <head>
+                <meta charset="UTF-8">
+                <!--[if gte mso 9]>
+                <xml>
+                    <x:ExcelWorkbook>
+                        <x:ExcelWorksheets>
+                            <x:ExcelWorksheet>
+                                <x:Name>General Results</x:Name>
+                                <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                            </x:ExcelWorksheet>
+                        </x:ExcelWorksheets>
+                    </x:ExcelWorkbook>
+                </xml>
+                <![endif]-->
+            </head>
+            <body>
+                <table>
+                    <tr><td colspan="${2 + (judges.length * 2) + 2}"><b>General Tabulated Result - ${eventName} - Round ${roundName}</b></td></tr>
+                    <tr></tr>
+                    <tr>
+                        <th>NO</th>
+                        <th>CONTESTANT</th>
+                        ${judges.map(judge => `<th>${judge.name} % SCORE</th><th>${judge.name} RANK</th>`).join('')}
+                        <th>AVG PERCENTAGE</th>
+                        <th>RANK</th>
+                    </tr>
+                    ${generalData.map((contestant, index) => `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${contestant.name}</td>
+                            ${contestant.judgeData.map(judge => `<td>${judge.percentage.toFixed(2)}%</td><td>${judge.rank}</td>`).join('')}
+                            <td>${contestant.avgPercentage.toFixed(2)}%</td>
+                            <td>${contestant.overallRank}</td>
+                        </tr>
+                    `).join('')}
+                </table>
+            </body>
+            </html>
+        `;
+        
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `General_Tabulated_Result_${eventName}_Round_${roundName}.xls`;
+        a.click();
+        window.URL.revokeObjectURL(url);
+    };
+
+    const printTable = () => {
+        const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+        const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+
+        // Create print window
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>General Tabulated Result - ${eventName} - Round ${roundName}</title>
+                <style>
+                    @media print {
+                        @page {
+                            size: landscape;
+                            margin: 0.5in;
+                        }
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 20px;
+                    }
+                    h1 {
+                        text-align: center;
+                        font-size: 24px;
+                        margin-bottom: 10px;
+                    }
+                    h2 {
+                        text-align: center;
+                        font-size: 18px;
+                        color: #666;
+                        margin-bottom: 30px;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 20px;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: center;
+                    }
+                    th {
+                        background-color: #333;
+                        color: white;
+                        font-weight: bold;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9f9f9;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>GENERAL TABULATED RESULT</h1>
+                <h2>${eventName} - Round ${roundName}</h2>
+                
+                <table>
+                    <thead>
+                        <tr>
+                            <th rowspan="2">NO</th>
+                            <th rowspan="2">CONTESTANT</th>
+                            ${judges.map(judge => `
+                                <th colspan="2">${judge.name.toUpperCase()}</th>
+                            `).join('')}
+                            <th rowspan="2">AVG<br/>PERCENTAGE</th>
+                            <th rowspan="2">FINAL RANK</th>
+                        </tr>
+                        <tr>
+                            ${judges.map(() => `
+                                <th>% SCORE</th>
+                                <th>RANK</th>
+                            `).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${generalData.length === 0 ? `
+                            <tr>
+                                <td colspan="${2 + (judges.length * 2) + 2}" style="text-align: center; padding: 20px;">
+                                    No data available
+                                </td>
+                            </tr>
+                        ` : generalData.map((contestant, index) => {
+                            // Get rank color
+                            let rankColor = '#d1d5db'; // gray for others
+                            if (contestant.overallRank === 1) rankColor = '#ef4444'; // red
+                            else if (contestant.overallRank === 2) rankColor = '#22c55e'; // green
+                            else if (contestant.overallRank === 3) rankColor = '#3b82f6'; // blue
+                            else if (contestant.overallRank === 4) rankColor = '#38bdf8'; // sky
+                            
+                            return `
+                            <tr>
+                                <td>${index + 1}</td>
+                                <td style="text-align: left; padding-left: 10px;"><strong>${contestant.name}</strong></td>
+                                ${contestant.judgeData.map(judge => `
+                                    <td>${judge.percentage.toFixed(2)}%</td>
+                                    <td><strong>${judge.rank}</strong></td>
+                                `).join('')}
+                                <td><strong>${contestant.avgPercentage.toFixed(2)}%</strong></td>
+                                <td style="background-color: ${rankColor}; color: white; font-weight: bold;">
+                                    ${contestant.overallRank}
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
+                    </tbody>
+                </table>
+                
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     return (
         <div className="h-screen flex flex-col overflow-hidden">
             {/* Fixed Header Section */}
@@ -344,13 +682,22 @@ const ScoreTables = () => {
                     </div>
 
                     {selectedEvent && selectedRound && (
-                        <button
-                            onClick={() => fetchRoundData(selectedEvent, selectedRound)}
-                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                        >
-                            <RefreshCw className="w-4 h-4 mr-2" />
-                            Refresh Data
-                        </button>
+                        <div className="mt-4 flex gap-4">
+                            <button
+                                onClick={() => fetchRoundData(selectedEvent, selectedRound)}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                            >
+                                <RefreshCw className="w-4 h-4 mr-2" />
+                                Refresh Data
+                            </button>
+                            <button
+                                onClick={printGeneralTabulation}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                            >
+                                <Printer className="w-4 h-4 mr-2" />
+                                Print General Tabulated Result
+                            </button>
+                        </div>
                     )}
                 </div>
             </div>
@@ -497,6 +844,123 @@ const ScoreTables = () => {
                     </div>
                 )}
             </div>
+
+            {/* Print Modal */}
+            {showPrintModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-800">General Tabulated Result</h2>
+                            <button
+                                onClick={() => setShowPrintModal(false)}
+                                className="text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body - Scrollable */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4">
+                            <div className="mb-4 text-center">
+                                <h3 className="text-lg font-semibold text-gray-700">
+                                    {events.find(e => e.id == selectedEvent)?.name || 'Event'} - Round {rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound}
+                                </h3>
+                            </div>
+
+                            {/* Table */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full border-collapse border border-gray-300">
+                                    <thead>
+                                        <tr className="bg-gray-800 text-white">
+                                            <th rowSpan="2" className="border border-gray-300 px-4 py-2">NO</th>
+                                            <th rowSpan="2" className="border border-gray-300 px-4 py-2">CONTESTANT</th>
+                                            {judges.map(judge => (
+                                                <th key={judge.id} colSpan="2" className="border border-gray-300 px-4 py-2">
+                                                    {judge.name.toUpperCase()}
+                                                </th>
+                                            ))}
+                                            <th rowSpan="2" className="border border-gray-300 px-4 py-2">AVG<br/>PERCENTAGE</th>
+                                            <th rowSpan="2" className="border border-gray-300 px-4 py-2">RANK</th>
+                                        </tr>
+                                        <tr className="bg-gray-700 text-white">
+                                            {judges.map(judge => (
+                                                <React.Fragment key={judge.id}>
+                                                    <th className="border border-gray-300 px-4 py-2">% SCORE</th>
+                                                    <th className="border border-gray-300 px-4 py-2">RANK</th>
+                                                </React.Fragment>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {generalData.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={2 + (judges.length * 2) + 2} className="border border-gray-300 px-4 py-8 text-center text-gray-500">
+                                                    No data available
+                                                </td>
+                                            </tr>
+                                        ) : generalData.map((contestant, index) => {
+                                            let rankBgColor = 'bg-gray-400';
+                                            if (contestant.overallRank === 1) rankBgColor = 'bg-red-500';
+                                            else if (contestant.overallRank === 2) rankBgColor = 'bg-green-500';
+                                            else if (contestant.overallRank === 3) rankBgColor = 'bg-blue-500';
+                                            else if (contestant.overallRank === 4) rankBgColor = 'bg-sky-400';
+
+                                            return (
+                                                <tr key={contestant.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                    <td className="border border-gray-300 px-4 py-2 text-center">{index + 1}</td>
+                                                    <td className="border border-gray-300 px-4 py-2 text-left font-semibold">{contestant.name}</td>
+                                                    {contestant.judgeData.map(judge => (
+                                                        <React.Fragment key={judge.judgeId}>
+                                                            <td className="border border-gray-300 px-4 py-2 text-center">
+                                                                {judge.percentage.toFixed(2)}%
+                                                            </td>
+                                                            <td className="border border-gray-300 px-4 py-2 text-center font-bold">
+                                                                {judge.rank}
+                                                            </td>
+                                                        </React.Fragment>
+                                                    ))}
+                                                    <td className="border border-gray-300 px-4 py-2 text-center font-bold">
+                                                        {contestant.avgPercentage.toFixed(2)}%
+                                                    </td>
+                                                    <td className={`border border-gray-300 px-4 py-2 text-center font-bold text-white ${rankBgColor}`}>
+                                                        {contestant.overallRank}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex items-center justify-end gap-4 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={exportToCSV}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                <FileDown className="w-4 h-4" />
+                                Export to CSV
+                            </button>
+                            <button
+                                onClick={exportToExcel}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                            >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Export to Excel
+                            </button>
+                            <button
+                                onClick={printTable}
+                                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2"
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

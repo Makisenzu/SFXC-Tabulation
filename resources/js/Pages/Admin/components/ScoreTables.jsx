@@ -214,68 +214,81 @@ const ScoreTables = () => {
     };
 
     return (
-        <div className="container mx-auto px-4 py-6">
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {/* Event Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Filter className="w-4 h-4 inline mr-2" />
-                            Select Event
-                        </label>
-                        <select
-                            value={selectedEvent || ''}
-                            onChange={(e) => {
-                                setSelectedEvent(e.target.value);
-                                setSelectedRound(null);
-                            }}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">-- Select Event --</option>
-                            {events.map(event => (
-                                <option key={event.id} value={event.id}>
-                                    {event.event_name}
-                                </option>
-                            ))}
-                        </select>
+        <div className="h-screen flex flex-col overflow-hidden">
+            {/* Fixed Header Section */}
+            <div className="flex-shrink-0 px-4 py-6 bg-gray-50">
+                {/* Filters */}
+                <div className="bg-white rounded-lg shadow-md p-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Event Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Filter className="w-4 h-4 inline mr-2" />
+                                Select Event
+                            </label>
+                            <select
+                                value={selectedEvent || ''}
+                                onChange={(e) => {
+                                    setSelectedEvent(e.target.value);
+                                    setSelectedRound(null);
+                                }}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                                <option value="">-- Select Event --</option>
+                                {events.map(event => (
+                                    <option key={event.id} value={event.id}>
+                                        {event.event_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Round Selection */}
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                <Filter className="w-4 h-4 inline mr-2" />
+                                Select Round
+                            </label>
+                            <select
+                                value={selectedRound || ''}
+                                onChange={(e) => setSelectedRound(e.target.value)}
+                                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                disabled={!selectedEvent}
+                            >
+                                <option value="">-- Select Round --</option>
+                                {rounds.map(round => (
+                                    <option key={round.id} value={round.round_no}>
+                                        Round {round.round_no}{round.is_active ? ' (Active)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
 
-                    {/* Round Selection */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            <Filter className="w-4 h-4 inline mr-2" />
-                            Select Round
-                        </label>
-                        <select
-                            value={selectedRound || ''}
-                            onChange={(e) => setSelectedRound(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            disabled={!selectedEvent}
+                    {selectedEvent && selectedRound && (
+                        <button
+                            onClick={() => fetchRoundData(selectedEvent, selectedRound)}
+                            className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
                         >
-                            <option value="">-- Select Round --</option>
-                            {rounds.map(round => (
-                                <option key={round.id} value={round.round_no}>
-                                    Round {round.round_no}{round.is_active ? ' (Active)' : ''}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                            Refresh Data
+                        </button>
+                    )}
                 </div>
-
-                {selectedEvent && selectedRound && (
-                    <button
-                        onClick={() => fetchRoundData(selectedEvent, selectedRound)}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
-                    >
-                        <RefreshCw className="w-4 h-4 mr-2" />
-                        Refresh Data
-                    </button>
-                )}
             </div>
 
-            {/* Judges Score Tables */}
-            {!loading && selectedEvent && selectedRound && judges.length > 0 && (
-                <div className="space-y-8">
+            {/* Scrollable Content Area */}
+            <div className="flex-1 overflow-y-auto px-4 pb-6 bg-gray-50">
+                {/* Loading State */}
+                {loading && (
+                    <div className="flex justify-center items-center h-64">
+                        <p className="text-gray-600 text-lg">Loading data...</p>
+                    </div>
+                )}
+
+                {/* Judges Score Tables */}
+                {!loading && selectedEvent && selectedRound && judges.length > 0 && (
+                    <div className="space-y-8 py-4">
                     {judges.map(judge => {
                         const rankings = getJudgeRankings(judge.id);
 
@@ -354,12 +367,12 @@ const ScoreTables = () => {
                                                     })}
                                                     <td className="px-4 py-3 text-center border-r border-gray-300">
                                                         <span className="font-bold text-gray-900">
-                                                            {ranking.totalScore}
+                                                            {ranking.totalScore.toFixed(2)}%
                                                         </span>
                                                     </td>
                                                     <td className="px-4 py-3 text-center border-r border-gray-300">
                                                         <span className="font-bold text-gray-900">
-                                                            {ranking.percentage}%
+                                                            {ranking.percentage.toFixed(2)}%
                                                         </span>
                                                     </td>
                                                     <td className={`px-4 py-3 text-center ${getRankBadgeColor(ranking.rank)}`}>
@@ -380,31 +393,32 @@ const ScoreTables = () => {
                 </div>
             )}
 
-            {/* No Data State */}
-            {!loading && selectedEvent && selectedRound && judges.length === 0 && (
-                <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                    <div className="text-gray-400 mb-4">
-                        <Award className="w-16 h-16 mx-auto" />
+                {/* No Data State */}
+                {!loading && selectedEvent && selectedRound && judges.length === 0 && (
+                    <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                        <div className="text-gray-400 mb-4">
+                            <Award className="w-16 h-16 mx-auto" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-700 mb-2">No Data Available</h3>
+                        <p className="text-gray-600">
+                            No judges or scores found for the selected event and round.
+                        </p>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">No Data Available</h3>
-                    <p className="text-gray-600">
-                        No judges or scores found for the selected event and round.
-                    </p>
-                </div>
-            )}
+                )}
 
-            {/* Initial State */}
-            {!loading && (!selectedEvent || !selectedRound) && (
-                <div className="bg-white rounded-lg shadow-md p-12 text-center">
-                    <div className="text-gray-400 mb-4">
-                        <Filter className="w-16 h-16 mx-auto" />
+                {/* Initial State */}
+                {!loading && (!selectedEvent || !selectedRound) && (
+                    <div className="bg-white rounded-lg shadow-md p-12 text-center">
+                        <div className="text-gray-400 mb-4">
+                            <Filter className="w-16 h-16 mx-auto" />
+                        </div>
+                        <h3 className="text-xl font-semibold text-gray-700 mb-2">Select Event and Round</h3>
+                        <p className="text-gray-600">
+                            Please select an event and round to view the score tables and rankings.
+                        </p>
                     </div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">Select Event and Round</h3>
-                    <p className="text-gray-600">
-                        Please select an event and round to view the score tables and rankings.
-                    </p>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

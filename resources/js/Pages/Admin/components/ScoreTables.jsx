@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
     Trophy,
     Medal,
@@ -8,7 +8,9 @@ import {
     Printer,
     FileDown,
     FileSpreadsheet,
-    X
+    X,
+    Download,
+    ChevronDown
 } from 'lucide-react';
 import appLogo from '@/images/printLogo.jpg';
 
@@ -24,6 +26,10 @@ const ScoreTables = () => {
     const [loading, setLoading] = useState(true);
     const [showPrintModal, setShowPrintModal] = useState(false);
     const [generalData, setGeneralData] = useState([]);
+    const [showSpecialAwardsModal, setShowSpecialAwardsModal] = useState(false);
+    const [specialAwardsData, setSpecialAwardsData] = useState([]);
+    const [showCriteriaDropdown, setShowCriteriaDropdown] = useState(false);
+    const dropdownRef = useRef(null);
 
     // Fetch events on component mount
     useEffect(() => {
@@ -87,6 +93,18 @@ const ScoreTables = () => {
             });
         }
     }, [selectedEvent, selectedRound]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setShowCriteriaDropdown(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // Update a single score in the state
     const updateSingleScore = (scoreData) => {
@@ -423,6 +441,115 @@ const ScoreTables = () => {
         setShowPrintModal(true);
     };
 
+    // Generate special awards data for specific criteria
+    const generateCriteriaAward = (criterionId) => {
+        const criterion = criteria.find(c => c.id === criterionId);
+        if (!criterion) return;
+
+        // Calculate data for each contestant
+        const data = contestants.map(contestant => {
+            const judgeData = judges.map(judge => {
+                const score = scores.find(
+                    s => s.judge_id === judge.id && 
+                         s.contestant_id === contestant.id && 
+                         s.criteria_id === criterion.id
+                );
+                
+                const rawScore = score ? parseFloat(score.score || 0) : 0;
+                // Convert score to percentage with criteria weight: (score / 10) * criteria_percentage
+                const criteriaWeight = parseInt(criterion.percentage) / 100;
+                const percentage = (rawScore / 10) * criteriaWeight * 100;
+                
+                return {
+                    judgeId: judge.id,
+                    judgeName: judge.name,
+                    score: rawScore,
+                    percentage: percentage
+                };
+            });
+
+            // Calculate average percentage
+            const totalPercentage = judgeData.reduce((sum, j) => sum + j.percentage, 0);
+            const avgPercentage = judgeData.length > 0 ? totalPercentage / judgeData.length : 0;
+
+            return {
+                id: contestant.id,
+                sequence_no: contestant.sequence_no,
+                name: contestant.contestant_name,
+                judgeData,
+                avgPercentage
+            };
+        });
+
+        // Calculate ranks for each judge
+        judges.forEach(judge => {
+            const sortedByJudge = [...data].sort((a, b) => {
+                const aPercentage = a.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                const bPercentage = b.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                return bPercentage - aPercentage;
+            });
+
+            let rank = 1;
+            let previousPercentage = null;
+            let sameRankCount = 0;
+
+            sortedByJudge.forEach((contestant) => {
+                const judgePercentage = contestant.judgeData.find(j => j.judgeId === judge.id)?.percentage || 0;
+                
+                if (previousPercentage !== null && judgePercentage < previousPercentage) {
+                    rank += sameRankCount;
+                    sameRankCount = 1;
+                } else if (previousPercentage === judgePercentage) {
+                    sameRankCount++;
+                } else {
+                    sameRankCount = 1;
+                }
+                
+                previousPercentage = judgePercentage;
+                
+                const judgeDataItem = contestant.judgeData.find(j => j.judgeId === judge.id);
+                if (judgeDataItem) {
+                    judgeDataItem.rank = rank;
+                }
+            });
+        });
+
+        // Calculate overall ranks based on average percentage
+        const sortedByAvg = [...data].sort((a, b) => b.avgPercentage - a.avgPercentage);
+        
+        let rank = 1;
+        let previousPercentage = null;
+        let sameRankCount = 0;
+
+        sortedByAvg.forEach((contestant) => {
+            if (previousPercentage !== null && contestant.avgPercentage < previousPercentage) {
+                rank += sameRankCount;
+                sameRankCount = 1;
+            } else if (previousPercentage === contestant.avgPercentage) {
+                sameRankCount++;
+            } else {
+                sameRankCount = 1;
+            }
+            
+            previousPercentage = contestant.avgPercentage;
+            contestant.overallRank = rank;
+        });
+
+        // Sort by sequence number for display
+        data.sort((a, b) => a.sequence_no - b.sequence_no);
+
+        const awardData = {
+            criteriaId: criterion.id,
+            criteriaName: criterion.criteria_name || criterion.criteria_desc,
+            percentage: criterion.percentage,
+            contestants: data
+        };
+
+        setSpecialAwardsData([awardData]);
+        setShowSpecialAwardsModal(true);
+        setShowCriteriaDropdown(false);
+    };
+
     // Export functions
     const exportToCSV = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
@@ -683,6 +810,168 @@ const ScoreTables = () => {
         printWindow.document.close();
     };
 
+    const printSpecialAwards = () => {
+        const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+        const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Special Awards</title>
+                <style>
+                    @media print {
+                        @page {
+                            size: landscape;
+                            margin: 0.5in;
+                        }
+                        * {
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                            color-adjust: exact !important;
+                        }
+                        body {
+                            page-break-inside: avoid;
+                        }
+                        table {
+                            page-break-inside: auto;
+                        }
+                        tr {
+                            page-break-inside: avoid;
+                            page-break-after: auto;
+                        }
+                        .certification-section {
+                            page-break-inside: avoid !important;
+                            page-break-before: avoid !important;
+                        }
+                        .signature-section {
+                            page-break-inside: avoid !important;
+                            page-break-before: avoid !important;
+                        }
+                    }
+                    body {
+                        font-family: Arial, sans-serif;
+                        padding: 20px;
+                        max-width: 100%;
+                        position: relative;
+                    }
+                    .logo {
+                        float: left;
+                        margin-right: 20px;
+                        margin-bottom: 20px;
+                        width: 80px;
+                        height: auto;
+                    }
+                    .header-content {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        overflow: hidden;
+                    }
+                    h1 {
+                        text-align: center;
+                        font-size: 20px;
+                        margin: 0;
+                        padding-top: 10px;
+                    }
+                    h2 {
+                        text-align: center;
+                        font-size: 18px;
+                        margin-top: 30px;
+                        margin-bottom: 15px;
+                        font-weight: bold;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                        margin-top: 10px;
+                        font-size: 11px;
+                    }
+                    th, td {
+                        border: 1px solid #000;
+                        padding: 4px 6px;
+                        text-align: center;
+                    }
+                    th {
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: center;
+                        font-weight: bold;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f9f9f9;
+                    }
+                </style>
+            </head>
+            <body>
+                <img src="${appLogo}" alt="Logo" class="logo" />
+                <div class="header-content">
+                    <h1>SPECIAL AWARDS</h1>
+                </div>
+                <div style="clear: both;"></div>
+                
+                ${specialAwardsData.map(award => `
+                    <h2 style="text-align: center; margin: 20px 0 15px 0; font-size: 16px;">Best in ${award.criteriaName}</h2>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th rowspan="2">NO</th>
+                                <th rowspan="2">CONTESTANT</th>
+                                ${judges.map(judge => `
+                                    <th colspan="2">${judge.name.toUpperCase()}</th>
+                                `).join('')}
+                                <th rowspan="2">AVG<br/>PERCENTAGE</th>
+                                <th rowspan="2">FINAL RANK</th>
+                            </tr>
+                            <tr>
+                                ${judges.map(() => `
+                                    <th>% SCORE</th>
+                                    <th>RANK</th>
+                                `).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${award.contestants.map((contestant) => {
+                                // Only winner gets color (rank 1)
+                                let rankColor = '';
+                                let rankStyle = '';
+                                if (contestant.overallRank === 1) {
+                                    rankColor = '#ef4444'; // red for winner
+                                    rankStyle = `background-color: ${rankColor}; color: white; font-weight: bold;`;
+                                } else {
+                                    rankStyle = 'font-weight: bold;';
+                                }
+                                
+                                return `
+                                <tr>
+                                    <td style="${contestant.overallRank === 1 ? rankStyle : 'font-weight: bold;'}">${contestant.sequence_no}</td>
+                                    <td style="text-align: left; padding-left: 10px;"><strong>${contestant.name}</strong></td>
+                                    ${contestant.judgeData.map(judge => `
+                                        <td>${judge.percentage.toFixed(2)}%</td>
+                                        <td><strong>${judge.rank}</strong></td>
+                                    `).join('')}
+                                    <td><strong>${contestant.avgPercentage.toFixed(2)}%</strong></td>
+                                    <td style="${rankStyle}">
+                                        ${contestant.overallRank}
+                                    </td>
+                                </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                `).join('')}
+                
+                <script>
+                    window.onload = function() {
+                        window.print();
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     return (
         <div className="h-screen flex flex-col overflow-hidden">
             {/* Fixed Header Section */}
@@ -751,6 +1040,31 @@ const ScoreTables = () => {
                                 <Printer className="w-4 h-4 mr-2" />
                                 Print General Tabulated Result
                             </button>
+                            <div className="relative" ref={dropdownRef}>
+                                <button
+                                    onClick={() => setShowCriteriaDropdown(!showCriteriaDropdown)}
+                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+                                >
+                                    <Award className="w-4 h-4 mr-2" />
+                                    Special Awards
+                                    <ChevronDown className="w-4 h-4 ml-2" />
+                                </button>
+                                {showCriteriaDropdown && criteria.length > 0 && (
+                                    <div className="absolute top-full left-0 mt-1 bg-white border border-gray-300 rounded-lg shadow-lg z-50 min-w-[250px] max-h-[300px] overflow-y-auto">
+                                        {criteria.map(criterion => (
+                                            <button
+                                                key={criterion.id}
+                                                onClick={() => generateCriteriaAward(criterion.id)}
+                                                className="w-full text-left px-4 py-2 hover:bg-purple-50 transition-colors border-b border-gray-200 last:border-b-0"
+                                            >
+                                                <div className="font-medium text-gray-800">
+                                                    {criterion.criteria_name || criterion.criteria_desc}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
@@ -918,7 +1232,7 @@ const ScoreTables = () => {
                         <div className="flex-1 overflow-y-auto px-6 py-4">
                             <div className="mb-4 text-center">
                                 <h3 className="text-lg font-semibold text-gray-700">
-                                    {events.find(e => e.id == selectedEvent)?.name || 'Event'} - Round {rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound}
+                                    {events.find(e => e.id == selectedEvent)?.event_name || 'Event'}
                                 </h3>
                             </div>
 
@@ -1008,6 +1322,203 @@ const ScoreTables = () => {
                             </button>
                             <button
                                 onClick={printTable}
+                                className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2"
+                            >
+                                <Printer className="w-4 h-4" />
+                                Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Special Awards Modal */}
+            {showSpecialAwardsModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Modal Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-2xl font-bold text-gray-800">Special Awards</h2>
+                            <button
+                                onClick={() => setShowSpecialAwardsModal(false)}
+                                className="text-gray-500 hover:text-gray-700 transition-colors"
+                            >
+                                <X className="w-6 h-6" />
+                            </button>
+                        </div>
+
+                        {/* Modal Body - Scrollable */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4">
+
+                            {/* Tables for each criteria */}
+                            {specialAwardsData.map((award, index) => (
+                                <div key={award.criteriaId} className={index > 0 ? 'mt-8' : ''}>
+                                    <h3 className="text-lg font-bold text-gray-800 mb-3 flex items-center">
+                                        Best in {award.criteriaName}
+                                    </h3>
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full border-collapse border border-white-300">
+                                            <thead>
+                                                <tr className="bg-white-800 text-black">
+                                                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">NO</th>
+                                                    <th rowSpan="2" className="border border-gray-300 px-4 py-2">CONTESTANT</th>
+                                                    {judges.map(judge => (
+                                                        <th key={judge.id} colSpan="2" className="border border-gray-300 px-4 py-2">
+                                                            {judge.name.toUpperCase()}
+                                                        </th>
+                                                    ))}
+                                                    <th rowSpan="2" className="border border-white-300 px-4 py-2">AVG SCORE</th>
+                                                    <th rowSpan="2" className="border border-white-300 px-4 py-2">FINAL RANK</th>
+                                                </tr>
+                                                <tr className="bg-white-700 text-black">
+                                                    {judges.map(judge => (
+                                                        <React.Fragment key={judge.id}>
+                                                            <th className="border border-gray-300 px-4 py-2">% SCORE</th>
+                                                            <th className="border border-gray-300 px-4 py-2">RANK</th>
+                                                        </React.Fragment>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {award.contestants.map((contestant) => {
+                                                    let rankBgColor = 'bg-white-400';
+                                                    if (contestant.overallRank === 1) rankBgColor = 'bg-red-500';
+                                                    else if (contestant.overallRank === 2) rankBgColor = 'bg-white-500';
+                                                    else if (contestant.overallRank === 3) rankBgColor = 'bg-white-500';
+                                                    else if (contestant.overallRank === 4) rankBgColor = 'bg-white-400';
+
+                                                    return (
+                                                        <tr key={contestant.id} className="hover:bg-gray-50">
+                                                            <td className={`border border-white-300 px-4 py-2 text-center font-bold text-black ${rankBgColor}`}>
+                                                                {contestant.sequence_no}
+                                                            </td>
+                                                            <td className="border border-white-300 px-4 py-2 text-left font-semibold">
+                                                                {contestant.name}
+                                                            </td>
+                                                            {contestant.judgeData.map(judge => (
+                                                                <React.Fragment key={judge.judgeId}>
+                                                                    <td className="border border-white-300 px-4 py-2 text-center">
+                                                                        {judge.percentage.toFixed(2)}%
+                                                                    </td>
+                                                                    <td className="border border-white-300 px-4 py-2 text-center font-bold">
+                                                                        {judge.rank}
+                                                                    </td>
+                                                                </React.Fragment>
+                                                            ))}
+                                                            <td className="border border-white-300 px-4 py-2 text-center font-bold">
+                                                                {contestant.avgPercentage.toFixed(2)}%
+                                                            </td>
+                                                            <td className={`border border-white-300 px-4 py-2 text-center font-bold text-black ${rankBgColor}`}>
+                                                                {contestant.overallRank}
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
+                            <button
+                                onClick={() => setShowSpecialAwardsModal(false)}
+                                className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                            >
+                                Close
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+                                    const roundNo = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+                                    
+                                    const csvContent = specialAwardsData.map(award => {
+                                        const header = `\n${award.criteriaName} (${award.percentage}%)\nNO,CONTESTANT,${judges.map(j => `${j.name} % SCORE,${j.name} RANK`).join(',')},AVG PERCENTAGE,FINAL RANK\n`;
+                                        const rows = award.contestants.map(c => 
+                                            `${c.sequence_no},${c.name},${c.judgeData.map(j => `${j.percentage.toFixed(2)}%,${j.rank}`).join(',')},${c.avgPercentage.toFixed(2)}%,${c.overallRank}`
+                                        ).join('\n');
+                                        return header + rows;
+                                    }).join('\n\n');
+
+                                    const blob = new Blob([`Special Awards - ${eventName} - Round ${roundNo}\n${csvContent}`], { type: 'text/csv' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `Special_Awards_${eventName}_Round_${roundNo}.csv`;
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                }}
+                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                <FileDown className="w-4 h-4" />
+                                Export CSV
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
+                                    const roundNo = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+                                    
+                                    let html = `
+                                        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+                                        <head>
+                                            <meta charset="UTF-8">
+                                            <!--[if gte mso 9]>
+                                            <xml>
+                                                <x:ExcelWorkbook>
+                                                    <x:ExcelWorksheets>
+                                                        <x:ExcelWorksheet>
+                                                            <x:Name>Special Awards</x:Name>
+                                                            <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                                                        </x:ExcelWorksheet>
+                                                    </x:ExcelWorksheets>
+                                                </x:ExcelWorkbook>
+                                            </xml>
+                                            <![endif]-->
+                                        </head>
+                                        <body>
+                                            ${specialAwardsData.map(award => `
+                                                <table>
+                                                    <tr><td colspan="${2 + (judges.length * 2) + 2}"><b>${award.criteriaName} (${award.percentage}%)</b></td></tr>
+                                                    <tr>
+                                                        <th>NO</th>
+                                                        <th>CONTESTANT</th>
+                                                        ${judges.map(judge => `<th>${judge.name} % SCORE</th><th>${judge.name} RANK</th>`).join('')}
+                                                        <th>AVG PERCENTAGE</th>
+                                                        <th>FINAL RANK</th>
+                                                    </tr>
+                                                    ${award.contestants.map(contestant => `
+                                                        <tr>
+                                                            <td>${contestant.sequence_no}</td>
+                                                            <td>${contestant.name}</td>
+                                                            ${contestant.judgeData.map(judge => `<td>${judge.percentage.toFixed(2)}%</td><td>${judge.rank}</td>`).join('')}
+                                                            <td>${contestant.avgPercentage.toFixed(2)}%</td>
+                                                            <td>${contestant.overallRank}</td>
+                                                        </tr>
+                                                    `).join('')}
+                                                </table>
+                                                <br/>
+                                            `).join('')}
+                                        </body>
+                                        </html>
+                                    `;
+                                    
+                                    const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `Special_Awards_${eventName}_Round_${roundNo}.xls`;
+                                    a.click();
+                                    window.URL.revokeObjectURL(url);
+                                }}
+                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2"
+                            >
+                                <FileSpreadsheet className="w-4 h-4" />
+                                Export Excel
+                            </button>
+                            <button
+                                onClick={printSpecialAwards}
                                 className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2"
                             >
                                 <Printer className="w-4 h-4" />

@@ -10,6 +10,7 @@ import {
     FileSpreadsheet,
     X
 } from 'lucide-react';
+import appLogo from '@/images/printLogo.jpg';
 
 const ScoreTables = () => {
     const [events, setEvents] = useState([]);
@@ -427,7 +428,7 @@ const ScoreTables = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
         const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
         
-        let csv = `General Tabulated Result - ${eventName} - Round ${roundName}\n\n`;
+        let csv = `General Tabulated Result\n\n`;
         
         // Headers
         csv += 'NO,CONTESTANT,';
@@ -450,7 +451,7 @@ const ScoreTables = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `General_Tabulated_Result_${eventName}_Round_${roundName}.csv`;
+        a.download = `General_Tabulated_Result.csv`;
         a.click();
         window.URL.revokeObjectURL(url);
     };
@@ -478,7 +479,7 @@ const ScoreTables = () => {
             </head>
             <body>
                 <table>
-                    <tr><td colspan="${2 + (judges.length * 2) + 2}"><b>General Tabulated Result - ${eventName} - Round ${roundName}</b></td></tr>
+                    <tr><td colspan="${2 + (judges.length * 2) + 2}"><b>General Tabulated Result</b></td></tr>
                     <tr></tr>
                     <tr>
                         <th>NO</th>
@@ -505,7 +506,7 @@ const ScoreTables = () => {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `General_Tabulated_Result_${eventName}_Round_${roundName}.xls`;
+        a.download = `General_Tabulated_Result.xls`;
         a.click();
         window.URL.revokeObjectURL(url);
     };
@@ -520,42 +521,76 @@ const ScoreTables = () => {
             <!DOCTYPE html>
             <html>
             <head>
-                <title>General Tabulated Result - ${eventName} - Round ${roundName}</title>
+                <title>General Tabulated Result</title>
                 <style>
                     @media print {
                         @page {
                             size: landscape;
                             margin: 0.5in;
                         }
+                        * {
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                            color-adjust: exact !important;
+                        }
+                        body {
+                            page-break-inside: avoid;
+                        }
+                        table {
+                            page-break-inside: auto;
+                        }
+                        tr {
+                            page-break-inside: avoid;
+                            page-break-after: auto;
+                        }
+                        .certification-section {
+                            page-break-inside: avoid !important;
+                            page-break-before: avoid !important;
+                        }
+                        .signature-section {
+                            page-break-inside: avoid !important;
+                            page-break-before: avoid !important;
+                        }
                     }
                     body {
                         font-family: Arial, sans-serif;
                         padding: 20px;
+                        max-width: 100%;
+                        position: relative;
+                    }
+                    .logo {
+                        float: left;
+                        margin-right: 20px;
+                        margin-bottom: 20px;
+                        width: 80px;
+                        height: auto;
+                    }
+                    .header-content {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        overflow: hidden;
                     }
                     h1 {
                         text-align: center;
-                        font-size: 24px;
-                        margin-bottom: 10px;
-                    }
-                    h2 {
-                        text-align: center;
-                        font-size: 18px;
-                        color: #666;
-                        margin-bottom: 30px;
+                        font-size: 20px;
+                        margin: 0;
+                        padding-top: 10px;
                     }
                     table {
                         width: 100%;
                         border-collapse: collapse;
-                        margin-top: 20px;
+                        margin-top: 10px;
+                        font-size: 11px;
                     }
                     th, td {
                         border: 1px solid #000;
-                        padding: 8px;
+                        padding: 4px 6px;
                         text-align: center;
                     }
                     th {
-                        background-color: #333;
-                        color: white;
+                        border: 1px solid #000;
+                        padding: 8px;
+                        text-align: center;
                         font-weight: bold;
                     }
                     tr:nth-child(even) {
@@ -564,8 +599,11 @@ const ScoreTables = () => {
                 </style>
             </head>
             <body>
-                <h1>GENERAL TABULATED RESULT</h1>
-                <h2>${eventName} - Round ${roundName}</h2>
+                <img src="${appLogo}" alt="Logo" class="logo" />
+                <div class="header-content">
+                    <h1>GENERAL TABULATED RESULT</h1>
+                </div>
+                <div style="clear: both;"></div>
                 
                 <table>
                     <thead>
@@ -602,7 +640,7 @@ const ScoreTables = () => {
                             
                             return `
                             <tr>
-                                <td>${index + 1}</td>
+                                <td style="background-color: ${rankColor}; color: white; font-weight: bold;">${contestant.sequence_no}</td>
                                 <td style="text-align: left; padding-left: 10px;"><strong>${contestant.name}</strong></td>
                                 ${contestant.judgeData.map(judge => `
                                     <td>${judge.percentage.toFixed(2)}%</td>
@@ -617,6 +655,22 @@ const ScoreTables = () => {
                         }).join('')}
                     </tbody>
                 </table>
+                
+                <!-- Certification Statement -->
+                <div class="certification-section" style="margin-top: 20px; text-align: center; font-style: italic; font-size: 12px;">
+                    <p style="margin: 5px 0;">We hereby certify that the above results are true and correct.</p>
+                </div>
+                
+                <!-- Signature Section -->
+                <div class="signature-section" style="margin-top: 20px; display: flex; justify-content: space-around; flex-wrap: wrap;">
+                    ${judges.map(judge => `
+                        <div style="text-align: center; margin: 10px; min-width: 180px;">
+                            <div style="border-bottom: 2px solid #000; width: 200px; margin: 0 auto 8px auto; height: 40px;"></div>
+                            <div style="font-weight: bold; font-size: 12px;">${judge.name.toUpperCase()}</div>
+                            <div style="font-size: 10px; color: #666;">Signature</div>
+                        </div>
+                    `).join('')}
+                </div>
                 
                 <script>
                     window.onload = function() {
@@ -908,7 +962,9 @@ const ScoreTables = () => {
 
                                             return (
                                                 <tr key={contestant.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                                    <td className="border border-gray-300 px-4 py-2 text-center">{index + 1}</td>
+                                                    <td className={`border border-gray-300 px-4 py-2 text-center font-bold text-white ${rankBgColor}`}>
+                                                        {contestant.sequence_no}
+                                                    </td>
                                                     <td className="border border-gray-300 px-4 py-2 text-left font-semibold">{contestant.name}</td>
                                                     {contestant.judgeData.map(judge => (
                                                         <React.Fragment key={judge.judgeId}>

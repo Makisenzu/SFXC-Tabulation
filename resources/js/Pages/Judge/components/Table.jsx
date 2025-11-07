@@ -1,7 +1,28 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { router } from '@inertiajs/react';
 import appLogo from '@/images/logo.png';
 import axios from 'axios';
+
+// Memoized Contestant Info Component
+const ContestantInfo = React.memo(({ photo, name, getPhotoUrl }) => {
+    return (
+        <div className="flex flex-col items-center justify-center h-full">
+            <img
+                src={getPhotoUrl(photo)}
+                alt={name}
+                className="w-72 h-96 object-cover border-4 border-blue-300 shadow-2xl rounded-2xl mb-6"
+                loading="eager"
+                decoding="async"
+                onError={(e) => {
+                    e.target.src = '/default-candidate.jpg';
+                }}
+            />
+            <div className="text-2xl text-gray-800 font-bold mt-4">
+                {name}
+            </div>
+        </div>
+    );
+});
 
 
 const Table = ({ selectedContestant }) => {
@@ -13,13 +34,21 @@ const Table = ({ selectedContestant }) => {
     const lastSavedScores = useRef({});
     const timeoutRef = useRef(null);
 
-    // Function to get photo URL
-    const getPhotoUrl = (photoPath) => {
+    // Function to get photo URL with memoization
+    const getPhotoUrl = useCallback((photoPath) => {
         if (!photoPath) return '/default-candidate.jpg';
         if (photoPath.startsWith('http')) return photoPath;
         if (photoPath.startsWith('contestants/')) return `/storage/${photoPath}`;
         return `/storage/${photoPath}`;
-    };
+    }, []);
+
+    // Preload image when contestant changes
+    useEffect(() => {
+        if (selectedContestant?.photo) {
+            const img = new Image();
+            img.src = getPhotoUrl(selectedContestant.photo);
+        }
+    }, [selectedContestant?.photo, getPhotoUrl]);
 
     // Update score in database using Inertia
     const updateScoreInDatabase = useCallback(async (criteriaId, score, tabulationId) => {
@@ -76,48 +105,45 @@ const Table = ({ selectedContestant }) => {
         if (selectedContestant) {
             console.log('🟡 Selected Contestant:', selectedContestant);
             
-            setLoading(true);
-            
-            if (selectedContestant.criteria && selectedContestant.criteria.length > 0) {
-                console.log('🟡 Criteria found in contestant:', selectedContestant.criteria);
-                setCriteria(selectedContestant.criteria);
+            // Use setTimeout to defer rendering and prevent blocking
+            const timer = setTimeout(() => {
+                if (selectedContestant.criteria && selectedContestant.criteria.length > 0) {
+                    console.log('🟡 Criteria found in contestant:', selectedContestant.criteria);
+                    setCriteria(selectedContestant.criteria);
+                    
+                    const initialScores = {};
+                    selectedContestant.criteria.forEach(criterion => {
+                        const score = criterion.score || '';
+                        initialScores[criterion.id] = score;
+                        lastSavedScores.current[criterion.id] = score;
+                    });
+                    setScores(initialScores);
+                } else {
+                    console.log('🔴 No criteria found in contestant data');
+                    setCriteria([]);
+                }
                 
-                const initialScores = {};
-                selectedContestant.criteria.forEach(criterion => {
-                    const score = criterion.score || '';
-                    initialScores[criterion.id] = score;
-                    lastSavedScores.current[criterion.id] = score;
-                });
-                setScores(initialScores);
-            } else {
-                console.log('🔴 No criteria found in contestant data');
-                setCriteria([]);
-            }
-            
-            if (selectedContestant.round_id) {
-                setActiveRound({
-                    id: selectedContestant.round_id,
-                    round_no: selectedContestant.round_number || 1
-                });
-            }
-            
-            setLoading(false);
+                if (selectedContestant.round_id) {
+                    setActiveRound({
+                        id: selectedContestant.round_id,
+                        round_number: selectedContestant.round_number || 1
+                    });
+                }
+                
+                setLoading(false);
+            }, 0);
+
+            return () => clearTimeout(timer);
         } else {
             setCriteria([]);
             setScores({});
             setActiveRound(null);
             lastSavedScores.current = {};
         }
+    }, [selectedContestant?.id]); // Only depend on contestant ID, not entire object
 
-        return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
-        };
-    }, [selectedContestant]);
-
-    // Handle score input change
-    const handleScoreChange = (criteriaId, value, tabulationId) => {
+    // Handle score input change - optimized with debounce
+    const handleScoreChange = useCallback((criteriaId, value, tabulationId) => {
         if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
             const numValue = parseFloat(value);
             if (value === '' || (numValue >= 0 && numValue <= 10)) {
@@ -129,7 +155,7 @@ const Table = ({ selectedContestant }) => {
                 autoSaveScore(criteriaId, value, tabulationId);
             }
         }
-    };
+    }, [autoSaveScore]);
 
     // Handle score input blur - format the value and force immediate save
     const handleScoreBlur = useCallback(async (criteriaId, value, tabulationId) => {
@@ -268,19 +294,11 @@ const Table = ({ selectedContestant }) => {
                                                             rowSpan={criteria.length}
                                                             style={{ verticalAlign: 'middle', height: '100%' }}
                                                         >
-                                                            <div className="flex flex-col items-center justify-center h-full">
-                                                                <img
-                                                                    src={getPhotoUrl(selectedContestant.photo)}
-                                                                    alt={selectedContestant.contestant_name}
-                                                                    className="w-72 h-96 object-cover border-4 border-blue-300 shadow-2xl rounded-2xl mb-6"
-                                                                    onError={(e) => {
-                                                                        e.target.src = '/default-candidate.jpg';
-                                                                    }}
-                                                                />
-                                                                <div className="text-2xl text-gray-800 font-bold mt-4">
-                                                                    {selectedContestant.contestant_name}
-                                                                </div>
-                                                            </div>
+                                                            <ContestantInfo 
+                                                                photo={selectedContestant.photo}
+                                                                name={selectedContestant.contestant_name}
+                                                                getPhotoUrl={getPhotoUrl}
+                                                            />
                                                         </td>
                                                     )}
                                                     

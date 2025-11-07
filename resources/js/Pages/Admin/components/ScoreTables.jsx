@@ -37,6 +37,84 @@ const ScoreTables = () => {
         }
     }, [selectedRound]);
 
+    // Setup real-time listener for score updates
+    useEffect(() => {
+        console.log('🔍 Broadcasting setup check:', {
+            selectedEvent,
+            selectedRound,
+            hasEcho: !!window.Echo,
+            echoType: window.Echo?.constructor?.name
+        });
+
+        if (selectedEvent && selectedRound && window.Echo) {
+            const channelName = `score-updates.${selectedEvent}.${selectedRound}`;
+            
+            console.log('🟡 Attempting to subscribe to:', channelName);
+
+            try {
+                const channel = window.Echo.private(channelName)
+                    .listen('.score.updated', (event) => {
+                        console.log('🟢 Score update received:', event);
+                        
+                        // Update the specific score in the scores array
+                        if (event.score) {
+                            updateSingleScore(event.score);
+                        }
+                    });
+
+                console.log('✅ Successfully subscribed to channel:', channelName);
+
+                // Cleanup on unmount or when event/round changes
+                return () => {
+                    console.log('🔴 Leaving channel:', channelName);
+                    window.Echo.leave(channelName);
+                };
+            } catch (error) {
+                console.error('❌ Failed to subscribe to channel:', error);
+            }
+        } else {
+            console.warn('⚠️ Cannot subscribe - missing:', {
+                selectedEvent: !!selectedEvent,
+                selectedRound: !!selectedRound,
+                windowEcho: !!window.Echo
+            });
+        }
+    }, [selectedEvent, selectedRound]);
+
+    // Update a single score in the state
+    const updateSingleScore = (scoreData) => {
+        setScores(prevScores => {
+            const updatedScores = [...prevScores];
+            
+            // Find existing score index
+            const existingIndex = updatedScores.findIndex(
+                s => s.judge_id === scoreData.judge_id && 
+                     s.contestant_id === scoreData.contestant_id && 
+                     s.criteria_id === scoreData.criteria_id
+            );
+
+            const newScore = {
+                id: scoreData.tabulation_id,
+                judge_id: scoreData.judge_id,
+                contestant_id: scoreData.contestant_id,
+                criteria_id: scoreData.criteria_id,
+                score: scoreData.score,
+                is_lock: scoreData.is_lock
+            };
+
+            if (existingIndex >= 0) {
+                // Update existing score
+                updatedScores[existingIndex] = newScore;
+            } else {
+                // Add new score
+                updatedScores.push(newScore);
+            }
+
+            console.log('✅ Score updated in state:', newScore);
+            return updatedScores;
+        });
+    };
+
     const fetchEvents = async () => {
         try {
             setLoading(true);

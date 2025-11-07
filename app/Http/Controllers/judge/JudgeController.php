@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\judge;
 
+use App\Events\JudgeScores;
 use Inertia\Inertia;
 use App\Models\Active;
 use App\Models\Assign;
@@ -221,6 +222,9 @@ class JudgeController extends Controller
                 'is_lock' => false
             ]);
         }
+
+        // Broadcast the score update to all other connected clients
+        broadcast(new JudgeScores($tabulation))->toOthers();
 
         // Return a simple success response for Inertia
         return response()->json([

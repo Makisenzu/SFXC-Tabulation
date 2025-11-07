@@ -17,6 +17,7 @@ const echoConfig = {
     forceTLS: true,
     encrypted: true,
 };
+
 if (csrfToken) {
     echoConfig.auth = {
         headers: {
@@ -24,21 +25,23 @@ if (csrfToken) {
         },
     };
 } else {
-    // console.warn('CSRF token not found. Private channels may not work.');
+    console.warn('CSRF token not found. Private channels may not work.');
 }
 
-
-let echoInstance = null;
-
-export const initEcho = () => {
-    if (typeof window !== 'undefined' && !echoInstance) {
-        echoInstance = new Echo(echoConfig);
-    }
-    return echoInstance;
-};
-
-export const getEcho = () => {
-    return echoInstance;
-};
+// Debug: Log Echo configuration
+console.log('🔧 Echo Config:', {
+    broadcaster: echoConfig.broadcaster,
+    key: echoConfig.key ? 'Set' : 'Missing',
+    cluster: echoConfig.cluster,
+    csrfToken: csrfToken ? 'Present' : 'Missing'
+});
 
 window.Echo = new Echo(echoConfig);
+
+// Debug: Confirm Echo is initialized
+console.log('✅ Echo initialized:', window.Echo);
+
+// Enable Pusher logging (for development)
+if (import.meta.env.DEV) {
+    Pusher.logToConsole = true;
+}

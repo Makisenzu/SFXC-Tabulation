@@ -109,6 +109,8 @@ Route::middleware(['auth', 'role:Judge'])->group(function () {
     Route::get('/judge/tabulation-data', [JudgeController::class, 'getTabulationData']);
 
     Route::patch('/judge/update-score', [JudgeController::class, 'updateScore'])->name('judge.update-score');
+    
+    Route::post('/judge/request-help', [JudgeController::class, 'requestHelp'])->name('judge.request-help');
 });
 
 Route::middleware('auth')->group(function () {

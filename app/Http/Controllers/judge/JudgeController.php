@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers\judge;
 
-use App\Events\JudgeScores;
+use Log;
 use Inertia\Inertia;
 use App\Models\Active;
 use App\Models\Assign;
 use App\Models\Criteria;
 use App\Models\Contestant;
 use App\Models\Tabulation;
+use App\Events\JudgeScores;
 use Illuminate\Http\Request;
+use App\Events\JudgeHelpRequested;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
@@ -286,5 +288,67 @@ class JudgeController extends Controller
     public function destroy(string $id)
     {
         //
+    }
+
+    /**
+     * Request help from admin
+     */
+    public function requestHelp(Request $request)
+    {
+        try {
+            $judge = Auth::user();
+            
+            // Get assigned event
+            $assignedEvent = Assign::where('user_id', $judge->id)
+                ->with(['event' => function($query) {
+                    $query->where('is_active', true);
+                }])
+                ->first();
+
+            if (!$assignedEvent || !$assignedEvent->event) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No active assigned event found'
+                ], 404);
+            }
+
+            $event = $assignedEvent->event;
+
+            // Get active round
+            $activeRound = Active::where('event_id', $event->id)
+                ->where('is_active', true)
+                ->first();
+
+            if (!$activeRound) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'No active round found'
+                ], 404);
+            }
+            
+            event(new JudgeHelpRequested(
+                $judge->username,
+                $judge->id,
+                $event->event_name,
+                $activeRound->round_no
+            ));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Help request sent to admin successfully',
+                'data' => [
+                    'judgeName' => $judge->username,
+                    'judgeId' => $judge->id,
+                    'eventName' => $event->event_name,
+                    'roundNumber' => $activeRound->round_no
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Failed to send help request: ' . $e->getMessage()
+            ], 500);
+        }
     }
 }

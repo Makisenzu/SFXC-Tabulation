@@ -2,7 +2,7 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import SidebarLink from '@/Components/SidebarLink';
 import { usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { FaFileArchive } from "react-icons/fa";
 import { FaPeopleGroup } from "react-icons/fa6";
 import { MdOutlineEventNote } from "react-icons/md";
@@ -11,15 +11,75 @@ import { FaUser } from "react-icons/fa6";
 import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 import { MdAdminPanelSettings } from "react-icons/md";
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
 
 export default function AuthenticatedLayout({ header, children, auth: propAuth }) {
     const pageProps = usePage().props;
     const auth = propAuth || pageProps.auth;
     const user = auth.user;
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+    const [helpNotifications, setHelpNotifications] = useState([]);
+    const [showNotification, setShowNotification] = useState(false);
 
     const toggleMobileSidebar = () => {
         setMobileSidebarOpen(!mobileSidebarOpen);
+    };
+
+    useEffect(() => {
+        // Only listen for admin notifications if user is an admin
+        if (user.role_id !== 1) {
+            return;
+        }
+
+        // Initialize Pusher
+        window.Pusher = Pusher;
+        
+        const echo = new Echo({
+            broadcaster: 'pusher',
+            key: import.meta.env.VITE_PUSHER_APP_KEY,
+            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+            forceTLS: true,
+            enabledTransports: ['ws', 'wss']
+        });
+
+        // Listen for judge help requests
+        const channel = echo.channel('admin-notifications');
+        
+        channel.listen('.judge.help.requested', (data) => {
+            const notification = {
+                id: Date.now(),
+                judgeName: data.judgeName,
+                judgeId: data.judgeId,
+                eventName: data.eventName,
+                roundNumber: data.roundNumber,
+                timestamp: data.timestamp
+            };
+
+            setHelpNotifications(prev => [notification, ...prev]);
+            setShowNotification(true);
+
+            // Auto-hide notification after 10 seconds
+            setTimeout(() => {
+                setShowNotification(false);
+            }, 10000);
+
+            // Play notification sound (optional)
+            const audio = new Audio('/notification.mp3');
+            audio.play().catch(e => {});
+        });
+
+        return () => {
+            echo.leaveChannel('admin-notifications');
+            echo.disconnect();
+        };
+    }, [user.role_id]);
+
+    const dismissNotification = (id) => {
+        setHelpNotifications(prev => prev.filter(n => n.id !== id));
+        if (helpNotifications.length <= 1) {
+            setShowNotification(false);
+        }
     };
 
     return (
@@ -333,6 +393,46 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                     </div>
                 </div>
             </div>
+
+            {/* Help Notification Popup */}
+            {showNotification && helpNotifications.length > 0 && (
+                <div className="fixed top-20 right-4 z-50 space-y-2">
+                    {helpNotifications.slice(0, 3).map((notification) => {
+                        // Format judge name from "judge1" to "Judge 1"
+                        const formattedJudgeName = notification.judgeName
+                            .replace(/judge(\d+)/i, 'Judge $1');
+                        
+                        return (
+                            <div
+                                key={notification.id}
+                                className="bg-red-600 text-white p-4 rounded-lg shadow-2xl animate-bounce w-80"
+                            >
+                                <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                            </svg>
+                                            <h3 className="font-bold text-lg">Help Request!</h3>
+                                        </div>
+                                        <div className="text-sm">
+                                            <p className="font-semibold text-lg">{formattedJudgeName}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => dismissNotification(notification.id)}
+                                        className="ml-4 text-white hover:text-gray-200"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">

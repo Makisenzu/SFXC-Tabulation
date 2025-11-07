@@ -26,3 +26,8 @@ Broadcast::channel('score-updates.{eventId}.{roundNo}', function ($user, $eventI
     
     return $isAssignedJudge || $isAdmin;
 });
+
+Broadcast::channel('admin-notifications', function ($user) {
+    // Only admins can listen to this channel
+    return $user->role_id === 1;
+});

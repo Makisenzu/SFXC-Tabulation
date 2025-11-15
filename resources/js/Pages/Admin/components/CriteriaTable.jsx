@@ -145,13 +145,13 @@ export default function CriteriaTable() {
 
                 {/* Header with Add Button */}
                 <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900">
                                 {activeTab === 'events' ? 'Events Management' : 'Criteria Management'}
                             </h2>
                         </div>
-                        <div className="flex items-center space-x-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             {activeTab === 'criterias' && eventsWithCriteria.length > 0 && (
                                 <>
                                     <button
@@ -170,6 +170,7 @@ export default function CriteriaTable() {
                             )}
                             <PrimaryButton 
                                 onClick={activeTab === 'events' ? openAddEvent : openAddCriteria}
+                                className="w-full sm:w-auto"
                             >
                                 <FaPlus className="mr-2" /> 
                                 Add {activeTab === 'events' ? 'Event' : 'Criteria'}
@@ -181,8 +182,88 @@ export default function CriteriaTable() {
                 {/* Table Content */}
                 <div className="overflow-x-auto">
                     {activeTab === 'events' ? (
-                        // Events Table
-                        <table className="min-w-full divide-y divide-gray-200">
+                        // Events Table - Hidden on mobile, shown on desktop
+                        <>
+                            {/* Mobile Card View */}
+                            <div className="block md:hidden">
+                                {safeEvents.length === 0 ? (
+                                    <div className="px-4 py-6 text-center text-sm text-gray-500">
+                                        <div className="flex flex-col items-center justify-center">
+                                            <FaCalendarAlt className="w-10 h-10 text-gray-300 mb-2" />
+                                            <p>No events found</p>
+                                            <p className="text-xs mt-1">Get started by creating a new event</p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="divide-y divide-gray-200">
+                                        {safeEvents.map((item) => (
+                                            <div key={item.id} className="p-4 hover:bg-gray-50">
+                                                <div className="flex items-start justify-between mb-3">
+                                                    <div className="flex items-start gap-3">
+                                                        <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-blue-100 rounded-full">
+                                                            <FaCalendarAlt className="w-5 h-5 text-blue-600" />
+                                                        </div>
+                                                        <div className="flex-1 min-w-0">
+                                                            <h3 className="text-sm font-semibold text-gray-900">{item.event_name}</h3>
+                                                            <p className="text-xs text-gray-500 mt-1">{item.description || 'No description'}</p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="space-y-2 mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-gray-500">Type:</span>
+                                                        {getEventTypeBadge(item.event_type)}
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xs text-gray-500">Status:</span>
+                                                        <div className="flex gap-1">
+                                                            {getStatusBadge(item.is_active)}
+                                                            {getArchiveBadge(item.is_archived)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-xs space-y-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <FaClock className="w-3 h-3 text-gray-400" />
+                                                            <span className="text-gray-600">Start: {formatDateWithTime(item.event_start)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <FaClock className="w-3 h-3 text-gray-400" />
+                                                            <span className="text-gray-600">End: {formatDateWithTime(item.event_end)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div className="flex flex-wrap gap-2">
+                                                    <button
+                                                        onClick={() => openAddJudges(item)}
+                                                        className="flex-1 min-w-[120px] inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                    >
+                                                        <RiAdminFill className="w-3 h-3 mr-1" />
+                                                        Judges
+                                                    </button>
+                                                    <button
+                                                        onClick={() => openEditEvent(item)}
+                                                        className="flex-1 min-w-[100px] inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                    >
+                                                        <FaEdit className="w-3 h-3 mr-1" />
+                                                        Edit
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDeleteEvent(item.id)}
+                                                        className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700"
+                                                    >
+                                                        <FaTrash className="w-3 h-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Desktop Table View */}
+                            <table className="hidden md:table min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -288,6 +369,7 @@ export default function CriteriaTable() {
                                 )}
                             </tbody>
                         </table>
+                        </>
                     ) : (
                         // Criteria Table - Grouped by Event
                         <div className="bg-white">

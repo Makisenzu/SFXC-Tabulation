@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { useState } from 'react';
+import appLogo from '@/images/printLogo.jpg';
 
 export default function PublicLayout({ children, title }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -13,7 +14,11 @@ export default function PublicLayout({ children, title }) {
                         <div className="flex items-center">
                             <Link href="/" className="flex items-center space-x-3">
                                 <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                                    <span className="text-white font-bold text-xl">S</span>
+                                <img
+                                src={appLogo}
+                                alt="App Logo"
+                                className="h-12 w-auto"
+                            />
                                 </div>
                                 <div>
                                     <div className="text-xl font-bold text-gray-900">SFXC Tabulation</div>
@@ -41,12 +46,6 @@ export default function PublicLayout({ children, title }) {
                                 className="text-gray-700 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                             >
                                 Archives
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
-                            >
-                                Staff Login
                             </Link>
                         </div>
 
@@ -101,37 +100,6 @@ export default function PublicLayout({ children, title }) {
             <main>
                 {children}
             </main>
-
-            {/* Footer */}
-            <footer className="bg-gray-900 text-white mt-16">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">SFXC Tabulation</h3>
-                            <p className="text-gray-400 text-sm">
-                                Real-time competition results and medal tracking system for San Francisco Xavier College events.
-                            </p>
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Quick Links</h3>
-                            <ul className="space-y-2 text-sm">
-                                <li><Link href="/medal-tally" className="text-gray-400 hover:text-white">Medal Tally</Link></li>
-                                <li><Link href="/archives" className="text-gray-400 hover:text-white">Event Archives</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h3 className="text-lg font-semibold mb-4">Contact</h3>
-                            <p className="text-gray-400 text-sm">
-                                San Francisco Xavier College<br />
-                                Tabulation Office
-                            </p>
-                        </div>
-                    </div>
-                    <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400 text-sm">
-                        <p>&copy; {new Date().getFullYear()} SFXC Tabulation System. All rights reserved.</p>
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }

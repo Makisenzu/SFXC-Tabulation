@@ -11,8 +11,33 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('medal', function (Blueprint $table) {
+        Schema::create('medal_tallies', function (Blueprint $table) {
             $table->id();
+            $table->string('tally_title');
+            $table->timestamps();
+        });
+
+        Schema::create('medal_tally_events', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('medal_tally_id')->constrained('medal_tallies')->cascadeOnDelete();
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
+            $table->timestamps();
+        });
+
+        Schema::create('medal_tally_participants', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('medal_tally_id')->constrained('medal_tallies')->cascadeOnDelete();
+            $table->string('participant_name');
+            $table->timestamps();
+        });
+
+        Schema::create('medal_scores', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('medal_tally_id')->constrained('medal_tallies')->cascadeOnDelete();
+            $table->foreignId('event_id')->constrained('events')->cascadeOnDelete();
+            $table->foreignId('participant_id')->constrained('medal_tally_participants')->cascadeOnDelete();
+            $table->integer('score');
+            $table->string('medal_type');
             $table->timestamps();
         });
     }
@@ -22,6 +47,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('medal');
+        Schema::dropIfExists('medal_scores');
+        Schema::dropIfExists('medal_tally_participants');
+        Schema::dropIfExists('medal_tally_events');
+        Schema::dropIfExists('medal_tallies');
     }
 };

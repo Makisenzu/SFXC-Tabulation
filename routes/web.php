@@ -106,11 +106,11 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
 
     //medals
-    Route::get('/getMedals', [MedalController::class, 'getMedals']);
-    Route::get('/getMedalsByEvent/{eventId}', [MedalController::class, 'getMedalsByEvent']);
-    Route::post('/addMedal', [MedalController::class, 'createMedal']);
-    Route::patch('/medals/{id}', [MedalController::class, 'updateMedal']);
-    Route::delete('/deleteMedal/{id}', [MedalController::class, 'deleteMedal']);
+    Route::get('/getMedalTallies', [MedalController::class, 'getMedalTallies']);
+    Route::get('/getMedalTally/{id}', [MedalController::class, 'getMedalTally']);
+    Route::post('/createMedalTally', [MedalController::class, 'createMedalTally']);
+    Route::post('/updateMedalScore', [MedalController::class, 'updateScore']);
+    Route::delete('/deleteMedalTally/{id}', [MedalController::class, 'deleteMedalTally']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

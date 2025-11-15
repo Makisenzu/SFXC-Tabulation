@@ -4,22 +4,21 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Medal extends Model
+class MedalTally extends Model
 {
-    protected $table = 'medal';
-    
     protected $fillable = [
-        'event_id',
-        'contestant_id',
-        'medal_type',
-        'rank'
+        'tally_title'
     ];
 
-    public function event() {
-        return $this->belongsTo(Event::class);
+    public function events() {
+        return $this->belongsToMany(Event::class, 'medal_tally_events');
     }
 
-    public function contestant() {
-        return $this->belongsTo(Contestant::class);
+    public function participants() {
+        return $this->hasMany(MedalTallyParticipant::class);
+    }
+
+    public function scores() {
+        return $this->hasMany(MedalScore::class);
     }
 }

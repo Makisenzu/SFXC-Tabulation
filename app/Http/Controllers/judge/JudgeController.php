@@ -21,25 +21,30 @@ class JudgeController extends Controller
      * Display a listing of the resource.
      */
 
-     public function getTabulationData(Request $request){
+     public function getTabulationData(){
         try {
             $judge = Auth::user();
-            
-            // Optimized: Single query with eager loading
+
+            // Get all assignments for this judge and filter for active, non-archived events
             $assignedEvent = Assign::where('user_id', $judge->id)
+                ->whereHas('event', function($query) {
+                    $query->where('is_active', true)
+                          ->where('is_archived', 0);
+                })
                 ->with(['event' => function($query) {
                     $query->where('is_active', true)
+                          ->where('is_archived', 0)
                           ->select('id', 'event_name', 'event_type', 'description');
                 }])
                 ->first();
-    
+
             if (!$assignedEvent || !$assignedEvent->event) {
                 return response()->json([
                     'success' => false,
                     'error' => 'No active assigned event found'
                 ], 404);
             }
-    
+
             $event = $assignedEvent->event;
     
             // Optimized: Select only needed columns
@@ -298,10 +303,15 @@ class JudgeController extends Controller
         try {
             $judge = Auth::user();
             
-            // Get assigned event
+            // Get assigned event - only active, non-archived events
             $assignedEvent = Assign::where('user_id', $judge->id)
+                ->whereHas('event', function($query) {
+                    $query->where('is_active', true)
+                          ->where('is_archived', 0);
+                })
                 ->with(['event' => function($query) {
-                    $query->where('is_active', true);
+                    $query->where('is_active', true)
+                          ->where('is_archived', 0);
                 }])
                 ->first();
 

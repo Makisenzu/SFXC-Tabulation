@@ -259,16 +259,18 @@ class EventController extends Controller
     }
     public function getJudges(Request $request) {
         $eventId = $request->query('event_id');
-        
+
         $judges = User::where('role_id', 2)
             ->where('is_active', 1);
 
+        // Exclude judges who have active AND non-archived events assigned
         $judges = $judges->whereDoesntHave('assigns.event', function($query) {
-            $query->where('is_active', 1);
+            $query->where('is_active', 1)
+                  ->where('is_archived', 0);
         });
-        
+
         $judges = $judges->get();
-        
+
         return response()->json([
             'judges' => $judges
         ]);

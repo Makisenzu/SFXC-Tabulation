@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckUserRole::class,
+            'sync.api' => \App\Http\Middleware\VerifySyncApiKey::class,
         ]);
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,

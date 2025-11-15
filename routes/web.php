@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\admin\ContestantController;
 use App\Http\Controllers\PublicController;
+use App\Http\Controllers\SyncController;
 use Inertia\Inertia;
 use App\Models\Event;
 use Illuminate\Support\Facades\Route;
@@ -49,6 +50,9 @@ Route::get('/getActiveRounds/{id}', [RoundController::class, 'getActiveRounds'])
 //     return Inertia::render('Dashboard');
 // })->middleware(['auth', 'verified'])->name('dashboard');
 
+
+// API Sync routes (for receiving data from local server)
+Route::post('/api/sync/receive', [SyncController::class, 'receiveSyncData'])->middleware('sync.api');
 Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/adminDashboard', function () {
         return Inertia::render('Admin/AdminDashboard');
@@ -124,6 +128,14 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/updateMedalScore', [MedalController::class, 'updateScore']);
     Route::delete('/deleteMedalTally/{id}', [MedalController::class, 'deleteMedalTally']);
 
+    
+    //sync
+    Route::post('/sync-to-online', [SyncController::class, 'syncToOnline']);
+
+    Route::get('/sync-settings', function () {
+        return Inertia::render('Admin/SyncSettings');
+    })->name('admin.sync');
+    Route::get('/sync-status', [SyncController::class, 'getSyncStatus']);
     //archives
     Route::get('/getArchivedEvents', [ArchiveController::class, 'getArchivedEvents']);
     Route::post('/archiveEvent/{id}', [ArchiveController::class, 'archiveEvent']);

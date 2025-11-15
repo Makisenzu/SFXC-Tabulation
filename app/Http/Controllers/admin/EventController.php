@@ -29,7 +29,7 @@ class EventController extends Controller
     public function createEvent(Request $request) {
         $validatedData = $request->validate([
             'event_name' => ['required', 'string', 'max:255'],
-            'event_type' => ['required', 'string', 'in:Pageant,Singing,Dancing'],
+            'event_type' => ['required', 'string'],
             'description' => ['required', 'string', 'max:255'],
             'event_start' => ['required', 'date'],
             'event_end' => ['required', 'date', 'after:event_start'],
@@ -44,7 +44,7 @@ class EventController extends Controller
     public function editEvent(Request $request, $id) {
         $validatedData = $request->validate([
             'event_name' => ['required', 'string', 'max:255'],
-            'event_type' => ['required', 'string', 'in:Pageant,Singing,Dancing'],
+            'event_type' => ['required', 'string'],
             'description' => ['required', 'string', 'max:255'],
             'event_start' => ['required', 'date'],
             'event_end' => ['required', 'date', 'after:event_start'],
@@ -52,8 +52,123 @@ class EventController extends Controller
         ]);
 
         $eventData = Event::findOrFail($id);
+        
+        // If setting to inactive, automatically archive the event
+        if ($validatedData['is_active'] == 0 && $eventData->is_active == 1) {
+            // Archive the event
+            $this->archiveEventData($eventData);
+            $validatedData['is_archived'] = 1;
+        } elseif ($validatedData['is_active'] == 1 && $eventData->is_archived == 1) {
+            // If reactivating an archived event, unarchive it
+            $validatedData['is_archived'] = 0;
+        }
+        
         $eventData->update($validatedData);
         return redirect()->back()->with('success', 'Event updated successfully!');
+    }
+    
+    private function archiveEventData($event) {
+        // Load event with all relationships
+        $event->load([
+            'contestants',
+            'criterias',
+            'actives.rounds.tabulations.criteria',
+            'actives.rounds.tabulations.user'
+        ]);
+
+        // Collect all data for archiving
+        $archiveData = [
+            'contestants' => [],
+        ];
+
+        // Get all contestants with their rounds and scores
+        foreach ($event->contestants as $contestant) {
+            $contestantData = [
+                'id' => $contestant->id,
+                'name' => $contestant->contestant_name,
+                'sequence_no' => $contestant->sequence_no,
+                'photo' => $contestant->photo,
+                'rounds' => []
+            ];
+
+            // Get rounds for this contestant
+            $rounds = \App\Models\Round::where('contestant_id', $contestant->id)
+                ->with(['active', 'tabulations.criteria', 'tabulations.user'])
+                ->get();
+
+            foreach ($rounds as $round) {
+                $roundData = [
+                    'round_no' => $round->active->round_no,
+                    'scores' => []
+                ];
+
+                foreach ($round->tabulations as $tabulation) {
+                    $roundData['scores'][] = [
+                        'criteria' => $tabulation->criteria->criteria_desc,
+                        'judge' => $tabulation->user->username,
+                        'score' => $tabulation->score,
+                        'percentage' => $tabulation->criteria->percentage
+                    ];
+                }
+
+                $contestantData['rounds'][] = $roundData;
+            }
+
+            $archiveData['contestants'][] = $contestantData;
+        }
+
+        // Calculate final rankings
+        $rankings = $this->calculateRankings($event);
+
+        // Create or update archive record
+        \App\Models\ResultArchive::updateOrCreate(
+            ['event_id' => $event->id],
+            [
+                'final_results' => json_encode($archiveData),
+                'contestant_rankings' => json_encode($rankings),
+                'archived_at' => now()
+            ]
+        );
+    }
+
+    private function calculateRankings($event) {
+        $rankings = [];
+        
+        foreach ($event->contestants as $contestant) {
+            $totalScore = 0;
+            $scoreCount = 0;
+
+            $rounds = \App\Models\Round::where('contestant_id', $contestant->id)
+                ->with('tabulations.criteria')
+                ->get();
+
+            foreach ($rounds as $round) {
+                foreach ($round->tabulations as $tabulation) {
+                    $percentageScore = ($tabulation->score / $tabulation->criteria->max_percentage) * $tabulation->criteria->percentage;
+                    $totalScore += $percentageScore;
+                    $scoreCount++;
+                }
+            }
+
+            $rankings[] = [
+                'contestant_id' => $contestant->id,
+                'contestant_name' => $contestant->contestant_name,
+                'total_score' => round($totalScore, 2),
+                'average_score' => $scoreCount > 0 ? round($totalScore / $scoreCount, 2) : 0
+            ];
+        }
+
+        // Sort by total score descending
+        usort($rankings, function($a, $b) {
+            return $b['total_score'] <=> $a['total_score'];
+        });
+
+        // Add rank
+        foreach ($rankings as $index => &$ranking) {
+            $ranking['rank'] = $index + 1;
+        }
+
+        return $rankings;
     }
     public function deleteEvent($id){
         $eventData = Event::findOrFail($id);

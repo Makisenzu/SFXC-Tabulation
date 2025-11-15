@@ -11,6 +11,7 @@ use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\admin\RoundController;
 use App\Http\Controllers\admin\ScoreController;
 use App\Http\Controllers\admin\MedalController;
+use App\Http\Controllers\admin\ArchiveController;
 use App\Http\Controllers\judge\JudgeController;
 
 Route::get('/admin', function() {
@@ -111,6 +112,12 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/createMedalTally', [MedalController::class, 'createMedalTally']);
     Route::post('/updateMedalScore', [MedalController::class, 'updateScore']);
     Route::delete('/deleteMedalTally/{id}', [MedalController::class, 'deleteMedalTally']);
+
+    //archives
+    Route::get('/getArchivedEvents', [ArchiveController::class, 'getArchivedEvents']);
+    Route::post('/archiveEvent/{id}', [ArchiveController::class, 'archiveEvent']);
+    Route::get('/getArchivedEventDetails/{id}', [ArchiveController::class, 'getArchivedEventDetails']);
+    Route::post('/unarchiveEvent/{id}', [ArchiveController::class, 'unarchiveEvent']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

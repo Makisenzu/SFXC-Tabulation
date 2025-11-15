@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\admin\ContestantController;
+use App\Http\Controllers\PublicController;
 use Inertia\Inertia;
 use App\Models\Event;
 use Illuminate\Support\Facades\Route;
@@ -14,6 +15,16 @@ use App\Http\Controllers\admin\MedalController;
 use App\Http\Controllers\admin\ArchiveController;
 use App\Http\Controllers\judge\JudgeController;
 
+Route::get('/', [PublicController::class, 'home'])->name('public.home');
+
+// Public routes
+Route::get('/medal-tally', [PublicController::class, 'medalTally'])->name('public.medals');
+Route::get('/archives', [PublicController::class, 'archives'])->name('public.archives');
+Route::get('/archives/{eventId}', [PublicController::class, 'archiveDetails'])->name('public.archive.details');
+
+// API routes for real-time updates
+Route::get('/api/medal-tallies', [PublicController::class, 'getMedalTallyData']);
+
 Route::get('/admin', function() {
     return Inertia::render('Auth/Login');
 })->name('admin.login');
@@ -24,14 +35,14 @@ Route::get('/judge', function() {
 })->name('judge.login');
 
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
-});
+// Route::get('/', function () {
+//     return Inertia::render('Welcome', [
+//         'canLogin' => Route::has('login'),
+//         'canRegister' => Route::has('register'),
+//         'laravelVersion' => Application::VERSION,
+//         'phpVersion' => PHP_VERSION,
+//     ]);
+// });
 Route::get('/getActiveRounds/{id}', [RoundController::class, 'getActiveRounds']);
 
 // Route::get('/dashboard', function () {
@@ -63,7 +74,7 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/ArchiveDashboard');
     })->name('admin.archive');
 
-    Route::get('/medal-tally', function () {
+    Route::get('/admin/medal-tally', function () {
         return Inertia::render('Admin/MedalDashboard');
     })->name('admin.medal');
 

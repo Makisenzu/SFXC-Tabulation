@@ -7,6 +7,7 @@ use App\Models\MedalTally;
 use App\Models\MedalTallyParticipant;
 use App\Models\MedalScore;
 use App\Models\Event;
+use App\Events\MedalTallyUpdated;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -88,6 +89,9 @@ class MedalController extends Controller
                 'medal_type' => $medalType
             ]
         );
+
+        // Broadcast the update to all public viewers
+        broadcast(new MedalTallyUpdated($validated['medal_tally_id']));
 
         return response()->json([
             'message' => 'Score updated successfully',

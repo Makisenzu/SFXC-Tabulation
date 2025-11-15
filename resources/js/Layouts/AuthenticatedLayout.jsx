@@ -11,6 +11,7 @@ import { FaUser } from "react-icons/fa6";
 import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 import { MdAdminPanelSettings } from "react-icons/md";
+import { FaMedal } from "react-icons/fa6";
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
@@ -164,6 +165,16 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                             <FaPeopleGroup size={18} />
                                         </div>
                                         Contestant Per Round
+                                    </SidebarLink>
+
+                                    <SidebarLink
+                                        href={route('admin.medal')}
+                                        active={route().current('admin.medal')}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center mr-3">
+                                            <FaMedal size={18} />
+                                        </div>
+                                        Medal Tally
                                     </SidebarLink>
 
                                     <div className="px-3 mt-6 mb-3">

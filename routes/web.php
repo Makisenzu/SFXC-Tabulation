@@ -10,6 +10,7 @@ use App\Http\Controllers\admin\EventController;
 use App\Http\Controllers\admin\PermissionController;
 use App\Http\Controllers\admin\RoundController;
 use App\Http\Controllers\admin\ScoreController;
+use App\Http\Controllers\admin\MedalController;
 use App\Http\Controllers\judge\JudgeController;
 
 Route::get('/admin', function() {
@@ -61,6 +62,10 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/ArchiveDashboard');
     })->name('admin.archive');
 
+    Route::get('/medal-tally', function () {
+        return Inertia::render('Admin/MedalDashboard');
+    })->name('admin.medal');
+
     Route::get('/getUsers', [PermissionController::class, 'getUser']);
 
     Route::post('/add/newUser', [PermissionController::class, 'addUser']);
@@ -99,6 +104,13 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getScoresByRound/{eventId}/{roundNo}', [ScoreController::class, 'getScoresByRound']);
     Route::get('/getTabulationDataByRound/{eventId}/{roundNo}', [ScoreController::class, 'getTabulationDataByRound']);
     Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
+
+    //medals
+    Route::get('/getMedals', [MedalController::class, 'getMedals']);
+    Route::get('/getMedalsByEvent/{eventId}', [MedalController::class, 'getMedalsByEvent']);
+    Route::post('/addMedal', [MedalController::class, 'createMedal']);
+    Route::patch('/medals/{id}', [MedalController::class, 'updateMedal']);
+    Route::delete('/deleteMedal/{id}', [MedalController::class, 'deleteMedal']);
 });
 
 Route::middleware(['auth', 'role:Judge'])->group(function () {

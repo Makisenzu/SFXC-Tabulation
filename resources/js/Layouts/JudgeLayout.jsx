@@ -335,10 +335,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content>
-                                    <Dropdown.Link href={route('profile.edit')} className="flex items-center hover:text-blue-600">
-                                        <FaUserGear className="mr-2" size={16} />
-                                        Profile
-                                    </Dropdown.Link>
                                     <Dropdown.Link className="flex items-center hover:text-red-600"
                                         href={route('logout')}
                                         method="post"

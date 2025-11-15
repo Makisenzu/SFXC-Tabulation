@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { router } from '@inertiajs/react';
-import appLogo from '@/images/logo.png';
+import appLogo from '@/images/printLogo.jpg';
 import axios from 'axios';
 
-// Memoized Contestant Info Component
 const ContestantInfo = React.memo(({ photo, name, getPhotoUrl }) => {
     return (
         <div className="flex flex-col items-center justify-center h-full">
             <img
                 src={getPhotoUrl(photo)}
                 alt={name}
-                className="w-72 h-96 object-cover border-4 border-blue-300 shadow-2xl rounded-2xl mb-6"
+                className="w-48 h-64 object-cover border-2 border-gray-400 shadow-lg rounded mb-4"
                 loading="eager"
                 decoding="async"
                 onError={(e) => {
                     e.target.src = '/default-candidate.jpg';
                 }}
             />
-            <div className="text-2xl text-gray-800 font-bold mt-4">
+            <div className="text-2xl text-black font-bold mt-2">
                 {name}
             </div>
         </div>
@@ -35,7 +34,6 @@ const Table = ({ selectedContestant }) => {
     const lastSavedScores = useRef({});
     const timeoutRef = useRef(null);
 
-    // Function to get photo URL with memoization
     const getPhotoUrl = useCallback((photoPath) => {
         if (!photoPath) return '/default-candidate.jpg';
         if (photoPath.startsWith('http')) return photoPath;
@@ -43,7 +41,6 @@ const Table = ({ selectedContestant }) => {
         return `/storage/${photoPath}`;
     }, []);
 
-    // Preload image when contestant changes
     useEffect(() => {
         if (selectedContestant?.photo) {
             const img = new Image();
@@ -51,7 +48,7 @@ const Table = ({ selectedContestant }) => {
         }
     }, [selectedContestant?.photo, getPhotoUrl]);
 
-    // Update score in database using Inertia
+
     const updateScoreInDatabase = useCallback(async (criteriaId, score, tabulationId) => {
         try {
             setSaving(true);
@@ -80,7 +77,6 @@ const Table = ({ selectedContestant }) => {
         }
     }, [selectedContestant]);
 
-    // Auto-save score when user moves to another field
     const autoSaveScore = useCallback((criteriaId, score, tabulationId) => {
         if (timeoutRef.current) {
             clearTimeout(timeoutRef.current);
@@ -96,7 +92,6 @@ const Table = ({ selectedContestant }) => {
         }, 500);
     }, [updateScoreInDatabase]);
 
-    // Extract criteria from selected contestant
     useEffect(() => {
         if (selectedContestant) {
             
@@ -134,7 +129,7 @@ const Table = ({ selectedContestant }) => {
             setActiveRound(null);
             lastSavedScores.current = {};
         }
-    }, [selectedContestant?.id]); // Only depend on contestant ID, not entire object
+    }, [selectedContestant?.id]);
 
     // Handle score input change - optimized with debounce
     const handleScoreChange = useCallback((criteriaId, value, tabulationId) => {
@@ -268,13 +263,13 @@ const Table = ({ selectedContestant }) => {
     };
 
     return (
-        <div className="h-full w-full bg-gray-50">
+        <div className="h-full w-full bg-white">
             {/* Help Button - Fixed position */}
-            <div className="fixed top-4 right-4 z-50">
+            <div className="fixed bottom-6 right-6 z-50">
                 <button
                     onClick={handleHelpRequest}
                     disabled={requestingHelp}
-                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded shadow-lg flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed border-2 border-red-600 text-lg"
                 >
                     {requestingHelp ? (
                         <>
@@ -282,14 +277,14 @@ const Table = ({ selectedContestant }) => {
                                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                             </svg>
-                            Sending...
+                            <span>Sending...</span>
                         </>
                     ) : (
                         <>
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            HELP
+                            <span>Request Help</span>
                         </>
                     )}
                 </button>
@@ -298,25 +293,38 @@ const Table = ({ selectedContestant }) => {
             {selectedContestant ? (
                 <div className="h-full w-full bg-white">
                     {loading ? (
-                        <div className="flex justify-center items-center h-full">
-                            <div className="animate-spin rounded-full h-20 w-20 border-b-4 border-blue-600"></div>
+                        <div className="flex justify-center items-center h-full bg-white">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="animate-spin rounded-full h-16 w-16 border-4 border-gray-300 border-t-black"></div>
+                                <p className="text-xl font-bold text-black">Loading scoring sheet...</p>
+                            </div>
                         </div>
                     ) : (
                         <div className="h-full w-full overflow-auto">
-                            <table className="w-full h-full border-collapse text-2xl">
-                                <thead className="bg-gray-100 sticky top-0 z-10">
+                            <table className="w-full h-full border-collapse">
+                                <thead className="bg-white sticky top-0 z-10 border-b-4 border-gray-400">
                                     <tr>
-                                        <th className="text-center p-8 border-2 border-gray-400" style={{ width: '30%' }}>CONTESTANT</th>
-                                        <th className="text-center p-8 border-2 border-gray-400" style={{ width: '35%' }}>CRITERIA</th>
-                                        <th className="text-center p-8 border-2 border-gray-400" style={{ width: '15%' }}>SCORE (0-10)</th>
-                                        <th className="text-center p-8 border-2 border-gray-400" style={{ width: '20%' }}>% EQUIVALENT</th>
+                                        <th className="text-center p-4 border-2 border-gray-400 font-bold text-xl" style={{ width: '25%' }}>
+                                            CONTESTANT
+                                        </th>
+                                        <th className="text-center p-4 border-2 border-gray-400 font-bold text-xl" style={{ width: '45%' }}>
+                                            CRITERIA
+                                        </th>
+                                        <th className="text-center p-4 border-2 border-gray-400 font-bold text-xl" style={{ width: '15%' }}>
+                                            SCORE (0-10)
+                                        </th>
+                                        <th className="text-center p-4 border-2 border-gray-400 font-bold text-xl" style={{ width: '15%' }}>
+                                            % EQUIVALENT
+                                        </th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="bg-white">
                                     {criteria.length === 0 ? (
                                         <tr>
-                                            <td colSpan="4" className="text-center p-16 text-gray-500 text-2xl border-2 border-gray-400 h-full">
-                                                No criteria available for this contestant.
+                                            <td colSpan="4" className="text-center p-16 text-xl border-2 border-gray-400 h-full font-bold">
+                                                <div className="flex flex-col items-center gap-3">
+                                                    <p>No criteria available for this contestant.</p>
+                                                </div>
                                             </td>
                                         </tr>
                                     ) : (
@@ -325,10 +333,10 @@ const Table = ({ selectedContestant }) => {
                                             const percentage = calculatePercentage(currentScore, criterion.percentage);
                                             
                                             return (
-                                                <tr key={criterion.id} className="hover:bg-gray-50">
+                                                <tr key={criterion.id}>
                                                     {index === 0 && (
                                                         <td 
-                                                            className="text-center p-8 align-middle border-2 border-gray-400" 
+                                                            className="text-center p-4 align-middle border-2 border-gray-400 bg-white" 
                                                             rowSpan={criteria.length}
                                                             style={{ verticalAlign: 'middle', height: '100%' }}
                                                         >
@@ -340,41 +348,57 @@ const Table = ({ selectedContestant }) => {
                                                         </td>
                                                     )}
                                                     
-                                                    <td className="p-8 align-middle border-2 border-gray-400">
-                                                        <div className="font-bold text-gray-800 text-3xl mb-4">
-                                                            {criterion.criteria_desc}
-                                                        </div>
-                                                        {criterion.definition && (
-                                                            <div className="text-xl text-gray-600 mt-3">
-                                                                {criterion.definition}
+                                                    <td className="p-4 align-middle border-2 border-gray-400 bg-white">
+                                                        <div className="space-y-2">
+                                                            <div className="font-bold text-black text-xl mb-2">
+                                                                {criterion.criteria_desc}
                                                             </div>
-                                                        )}
-                                                        <div className="text-xl text-gray-500 mt-4 font-semibold">
-                                                            Percentage: {criterion.percentage}%
+                                                            {criterion.definition && (
+                                                                <div className="text-base text-black mt-2">
+                                                                    {criterion.definition}
+                                                                </div>
+                                                            )}
+                                                            <div className="inline-flex items-center gap-2 mt-2 border-2 border-gray-400 px-3 py-1 rounded font-bold text-sm">
+                                                                <span>Weight: {criterion.percentage}%</span>
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     
-                                                    <td className="text-center p-8 align-middle border-2 border-gray-400">
-                                                        <div className="flex justify-center">
-                                                            <input
-                                                                type="text"
-                                                                value={currentScore || ''}
-                                                                onChange={(e) => handleScoreChange(criterion.id, e.target.value, criterion.tabulation_id)}
-                                                                onBlur={(e) => handleScoreBlur(criterion.id, e.target.value, criterion.tabulation_id)}
-                                                                className="w-40 text-4xl font-bold text-gray-800 text-center border-2 border-gray-300 rounded-lg p-3 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 focus:outline-none transition-all"
-                                                                placeholder="0.00"
-                                                                maxLength={5}
-                                                            />
-                                                        </div>
-                                                        <div className="text-sm text-gray-500 mt-2">
-                                                            Enter 0-10 (decimals allowed)
+                                                    <td className="text-center p-4 align-middle border-2 border-gray-400 bg-white">
+                                                        <div className="flex flex-col items-center gap-2">
+                                                            <div className="relative">
+                                                                <input
+                                                                    type="text"
+                                                                    value={currentScore || ''}
+                                                                    onChange={(e) => handleScoreChange(criterion.id, e.target.value, criterion.tabulation_id)}
+                                                                    onBlur={(e) => handleScoreBlur(criterion.id, e.target.value, criterion.tabulation_id)}
+                                                                    className="w-32 text-3xl font-bold text-black text-center border-2 border-gray-400 rounded p-2 focus:border-gray-600 focus:outline-none transition-all bg-white"
+                                                                    placeholder="0.00"
+                                                                    maxLength={5}
+                                                                />
+                                                                {saving && (
+                                                                    <div className="absolute -top-2 -right-2 border-2 border-gray-400 bg-white text-black text-xs px-2 py-1 rounded font-bold">
+                                                                        Saving
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-xs text-black font-semibold">
+                                                                Range: 0.00 - 10.00
+                                                            </div>
                                                         </div>
                                                     </td>
                                                     
-                                                    <td className="text-center p-8 align-middle border-2 border-gray-400">
-                                                        <span className="text-4xl font-bold text-blue-600">
-                                                            {percentage}%
-                                                        </span>
+                                                    <td className="text-center p-4 align-middle border-2 border-gray-400 bg-white">
+                                                        <div className="flex flex-col items-center gap-1">
+                                                            <div className="border-2 border-gray-400 px-4 py-2 rounded font-bold">
+                                                                <span className="text-3xl">
+                                                                    {percentage}%
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-black font-semibold mt-1">
+                                                                Weighted Score
+                                                            </div>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             );
@@ -386,24 +410,26 @@ const Table = ({ selectedContestant }) => {
                     )}
                 </div>
             ) : (
-            <div className="h-full w-full flex items-center justify-center bg-white">
-                <div className="flex flex-col items-center text-center">
-                    <img
-                        src={appLogo}
-                        alt="App Logo"
-                        className="h-26 w-auto mb-10"
-                    />
-                    <h3 className="text-4xl font-bold text-gray-700 mb-8">
-                        No Contestant Selected
-                    </h3>
-                    <p className="text-2xl text-gray-600">
-                        Select a contestant to view scoring details
-                    </p>
-                </div>
-            </div>
-                        )}
+                <div className="h-full w-full flex items-center justify-center bg-white">
+                    <div className="flex flex-col items-center text-center bg-white p-12 rounded">
+                        <div className="p-5 rounded mb-6">
+                            <img
+                                src={appLogo}
+                                alt="App Logo"
+                                className="h-24 w-auto"
+                            />
+                        </div>
+                        <h3 className="text-4xl font-bold text-black mb-3">
+                            No Contestant Selected
+                        </h3>
+                        <p className="text-xl text-black font-semibold max-w-md">
+                            Please select a contestant from the list to begin scoring
+                        </p>
                     </div>
-                );
-            };
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default Table;

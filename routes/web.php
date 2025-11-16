@@ -6,6 +6,7 @@ use App\Http\Controllers\SyncController;
 use Inertia\Inertia;
 use App\Models\Event;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Foundation\Application;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\admin\EventController;
@@ -27,11 +28,25 @@ Route::get('/archives/{eventId}', [PublicController::class, 'archiveDetails'])->
 Route::get('/api/medal-tallies', [PublicController::class, 'getMedalTallyData']);
 
 Route::get('/admin', function() {
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->role_id === 1) {
+            return redirect()->route('admin.dashboard');
+        }
+        return redirect('/');
+    }
     return Inertia::render('Auth/Login');
 })->name('admin.login');
 
 
 Route::get('/judge', function() {
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->role_id === 2) {
+            return redirect()->route('judge.dashboard');
+        }
+        return redirect('/');
+    }
     return Inertia::render('Auth/JudgeLogin');
 })->name('judge.login');
 

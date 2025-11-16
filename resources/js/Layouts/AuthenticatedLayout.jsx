@@ -12,8 +12,6 @@ import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 import { MdAdminPanelSettings } from "react-icons/md";
 import { FaMedal } from "react-icons/fa6";
-import Echo from 'laravel-echo';
-import Pusher from 'pusher-js';
 
 export default function AuthenticatedLayout({ header, children, auth: propAuth }) {
     const pageProps = usePage().props;
@@ -33,19 +31,14 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
             return;
         }
 
-        // Initialize Pusher
-        window.Pusher = Pusher;
-        
-        const echo = new Echo({
-            broadcaster: 'pusher',
-            key: import.meta.env.VITE_PUSHER_APP_KEY,
-            cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-            forceTLS: true,
-            enabledTransports: ['ws', 'wss']
-        });
+        // Use the global Echo instance that's already configured (supports both Pusher and Reverb)
+        if (!window.Echo) {
+            console.error('❌ window.Echo not available for admin notifications');
+            return;
+        }
 
-        // Listen for judge help requests
-        const channel = echo.channel('admin-notifications');
+        // Listen for judge help requests on public channel
+        const channel = window.Echo.channel('admin-notifications');
         
         channel.listen('.judge.help.requested', (data) => {
             const notification = {
@@ -71,8 +64,9 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
         });
 
         return () => {
-            echo.leaveChannel('admin-notifications');
-            echo.disconnect();
+            if (window.Echo) {
+                window.Echo.leave('admin-notifications');
+            }
         };
     }, [user.role_id]);
 

@@ -10,8 +10,7 @@ export default function JudgeDashboard() {
     return (
         <JudgeLayout
             header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Judge Dashboard
+                <h2 className="text-xl font-semibold leading-tight text-white-800">
                 </h2>
             }
             selectedContestant={selectedContestant}

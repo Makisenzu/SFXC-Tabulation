@@ -295,12 +295,12 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-white border-b border-gray-200 z-10">
+                <header className="bg-gradient-to-r from-green-600 to-green-700 shadow-md z-10">
                     <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button 
                                 onClick={toggleMobileSidebar}
-                                className="md:hidden p-2 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900 transition-colors"
+                                className="md:hidden p-2 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
                             >
                                 <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
@@ -309,9 +309,9 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                             {header && (
                                 <div>
                                     {typeof header === 'string' ? (
-                                        <h1 className="text-xl font-bold text-gray-900">{header}</h1>
+                                        <h1 className="text-xl font-bold text-white">{header}</h1>
                                     ) : (
-                                        <div className="text-xl font-bold text-gray-900">{header}</div>
+                                        <div className="text-xl font-bold text-white">{header}</div>
                                     )}
                                 </div>
                             )}
@@ -323,12 +323,12 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                                     <span className="inline-flex rounded-md">
                                         <button
                                             type="button"
-                                            className="inline-flex items-center p-1.5 border-transparent rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                                            className="inline-flex items-center p-1.5 border-transparent rounded-lg text-white/80 hover:bg-white/10 transition-colors"
                                         >
                                             <img
                                                 src={user.picture ? `/storage/profile-pictures/${user.picture}` : '/default-avatar.png'}
                                                 alt="Profile"
-                                                className="w-8 h-8 rounded-full object-cover border-2 border-gray-200"
+                                                className="w-8 h-8 rounded-full object-cover border-2 border-white"
                                             />
                                         </button>
                                     </span>
@@ -349,10 +349,8 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                     </div>
                 </header>
 
-                <main className="flex-1 overflow-y-auto bg-gray-50">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-                        {children}
-                    </div>
+                <main className="flex-1 overflow-hidden bg-gray-50">
+                    {children}
                 </main>
             </div>
         </div>

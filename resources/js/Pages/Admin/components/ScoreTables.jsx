@@ -13,6 +13,7 @@ import {
     ChevronDown
 } from 'lucide-react';
 import appLogo from '@/images/printLogo.jpg';
+import axios from 'axios';
 
 const ScoreTables = () => {
     const [events, setEvents] = useState([]);
@@ -207,6 +208,28 @@ const ScoreTables = () => {
             console.error('Error fetching round data:', error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    // Notify judge to enter scores
+    const notifyJudge = async (judgeId, judgeName) => {
+        try {
+            const response = await axios.post('/admin/notify-judge', {
+                judge_id: judgeId,
+                event_id: selectedEvent,
+                round_no: selectedRound,
+                message: 'Please enter your scores as soon as possible.'
+            });
+            
+            if (response.data.success) {
+                alert(`Notification sent to ${judgeName} successfully!`);
+            } else {
+                alert('Failed to send notification. Please try again.');
+            }
+        } catch (error) {
+            console.error('Error sending notification:', error);
+            console.error('Error response:', error.response?.data);
+            alert(`Failed to send notification: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -1088,8 +1111,18 @@ const ScoreTables = () => {
                         return (
                             <div key={judge.id} className="bg-white rounded-lg shadow overflow-hidden border border-gray-300">
                                 {/* Judge Header */}
-                                <div className="bg-gray-800 text-white px-6 py-3">
+                                <div className="bg-gray-800 text-white px-6 py-3 flex items-center justify-between">
                                     <h2 className="text-xl font-bold">{judge.name}</h2>
+                                    <button
+                                        onClick={() => notifyJudge(judge.id, judge.name)}
+                                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                                        title="Notify judge to enter scores"
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                                        </svg>
+                                        Notify
+                                    </button>
                                 </div>
 
                                 {/* Score Table */}

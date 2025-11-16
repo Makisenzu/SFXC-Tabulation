@@ -16,6 +16,7 @@ const echoConfig = {
     cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
     forceTLS: true,
     encrypted: true,
+    authEndpoint: '/broadcasting/auth',
 };
 
 if (csrfToken) {

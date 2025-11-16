@@ -31,3 +31,8 @@ Broadcast::channel('admin-notifications', function ($user) {
     // Only admins can listen to this channel
     return $user->role_id === 1;
 });
+
+Broadcast::channel('judge-notifications.{judgeId}', function ($user, $judgeId) {
+    // Only the specific judge can listen to their notification channel
+    return (int) $user->id === (int) $judgeId && $user->role_id === 2;
+});

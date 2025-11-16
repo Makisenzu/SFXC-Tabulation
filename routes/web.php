@@ -135,6 +135,7 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getScoresByRound/{eventId}/{roundNo}', [ScoreController::class, 'getScoresByRound']);
     Route::get('/getTabulationDataByRound/{eventId}/{roundNo}', [ScoreController::class, 'getTabulationDataByRound']);
     Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
+    Route::post('/admin/notify-judge', [ScoreController::class, 'notifyJudge']);
 
     //medals
     Route::get('/getMedalTallies', [MedalController::class, 'getMedalTallies']);

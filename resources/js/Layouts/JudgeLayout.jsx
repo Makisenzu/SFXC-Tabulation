@@ -6,14 +6,21 @@ import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 
 export default function JudgeLayout({ header, children, auth: propAuth, onContestantSelect, selectedContestant }) {
+    console.log('🎯 JudgeLayout rendering');
+    
     const { props } = usePage();
     const auth = propAuth || props.auth;
     const user = auth.user;
+    
+    console.log('👤 User ID:', user?.id);
+    console.log('🌍 Window.Echo exists:', !!window.Echo);
     const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
     const [tabulationData, setTabulationData] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [currentChannel, setCurrentChannel] = useState(null);
+    const [notification, setNotification] = useState(null);
+    const [showNotificationModal, setShowNotificationModal] = useState(false);
 
     const toggleMobileSidebar = () => {
         setMobileSidebarOpen(!mobileSidebarOpen);
@@ -45,30 +52,10 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         }
     }, []);
 
-    const reFetchTabulationData = useCallback(async () => {
-        try {
-            const response = await fetch('/judge/tabulation-data');
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                setTabulationData(result.data);
-            } else {
-                throw new Error(result.error || 'Failed to fetch tabulation data');
-            }
-        } catch (err) {
-            console.error('Error re-fetching tabulation data:', err);
-        }
-    }, []);
-
     // Initial data fetch on component mount
     useEffect(() => {
         fetchTabulationData();
-    }, [fetchTabulationData]);
+    }, []); // Empty dependency - only run once on mount
 
     // Cleanup broadcasting on unmount
     useEffect(() => {
@@ -78,6 +65,54 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
             }
         };
     }, [currentChannel]);
+
+    // Listen for judge notifications - using global Echo instance  
+    useEffect(() => {
+        console.log('🔧 Notification useEffect triggered');
+        
+        if (!window.Echo) {
+            console.error('❌ window.Echo is not available');
+            return;
+        }
+        
+        if (!user?.id) {
+            console.error('❌ user.id is not available', user);
+            return;
+        }
+
+        const channelName = `judge-notifications.${user.id}`;
+        console.log('📡 Attempting to subscribe to:', channelName);
+        
+        try {
+            const channel = window.Echo.private(channelName);
+            
+            channel.subscribed(() => {
+                console.log('✅ Successfully subscribed to:', channelName);
+            });
+            
+            channel.error((error) => {
+                console.error('❌ Channel subscription error:', error);
+            });
+            
+            channel.listen('.judge.notification', (data) => {
+                console.log('🔔 NOTIFICATION RECEIVED!', data);
+                setNotification(data.notification);
+                setShowNotificationModal(true);
+            });
+            
+            console.log('👂 Listener attached for .judge.notification');
+            
+        } catch (error) {
+            console.error('❌ Error in notification setup:', error);
+        }
+
+        return () => {
+            console.log('🧹 Cleanup: leaving channel', channelName);
+            if (window.Echo) {
+                window.Echo.leave(channelName);
+            }
+        };
+    }, [user?.id]);
 
     const getPhotoUrl = (photoPath) => {
         if (!photoPath) return '/default-candidate.jpg';
@@ -90,9 +125,7 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         if (onContestantSelect) {
             onContestantSelect(contestant);
         }
-    
-        reFetchTabulationData();
-    }, [onContestantSelect, reFetchTabulationData]);
+    }, [onContestantSelect]);
 
     const handleRefresh = () => {
         setError(null);
@@ -353,6 +386,47 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                     {children}
                 </main>
             </div>
+
+            {/* Notification Modal */}
+            {showNotificationModal && notification && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-bounce-in">
+                        <div className="bg-yellow-500 text-white px-6 py-4 rounded-t-lg flex items-center gap-3">
+                            <svg className="w-8 h-8 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
+                            </svg>
+                            <h3 className="text-xl font-bold">Admin Notification</h3>
+                        </div>
+                        <div className="p-6">
+                            <div className="mb-4">
+                                <p className="text-sm text-gray-600 mb-2">
+                                    <span className="font-semibold">Event:</span> {notification.event_name}
+                                </p>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    <span className="font-semibold">Round:</span> {notification.round_no}
+                                </p>
+                            </div>
+                            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                                <p className="text-gray-800 font-medium text-lg">
+                                    {notification.message}
+                                </p>
+                            </div>
+                            <div className="text-xs text-gray-500 mb-4">
+                                {notification.timestamp}
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setShowNotificationModal(false);
+                                    setNotification(null);
+                                }}
+                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                            >
+                                Got it!
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -2,10 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head } from '@inertiajs/react';
 import Table from './components/Table';
 import JudgeLayout from '@/Layouts/JudgeLayout';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 export default function JudgeDashboard() {
     const [selectedContestant, setSelectedContestant] = useState(null);
+
+    const handleContestantSelect = useCallback((contestant) => {
+        setSelectedContestant(contestant);
+    }, []);
 
     return (
         <JudgeLayout
@@ -14,14 +18,13 @@ export default function JudgeDashboard() {
                 </h2>
             }
             selectedContestant={selectedContestant}
-            onContestantSelect={setSelectedContestant}
+            onContestantSelect={handleContestantSelect}
         >
             <Head title="Dashboard" />
 
             <div className="py-5">
             <Table 
                                 selectedContestant={selectedContestant}
-                                onContestantSelect={setSelectedContestant}
                             />
             </div>
         </JudgeLayout>

@@ -330,7 +330,6 @@ class ScoreController extends Controller
     public function notifyJudge(Request $request)
     {
         try {
-            \Log::info('Notify judge request received', $request->all());
             
             $judgeId = $request->input('judge_id');
             $eventId = $request->input('event_id');
@@ -341,7 +340,6 @@ class ScoreController extends Controller
             $judge = User::find($judgeId);
             
             if (!$judge) {
-                \Log::error('Judge not found', ['judge_id' => $judgeId]);
                 return response()->json(['success' => false, 'message' => 'Judge not found'], 404);
             }
 
@@ -349,32 +347,22 @@ class ScoreController extends Controller
             $event = Event::find($eventId);
             
             if (!$event) {
-                \Log::error('Event not found', ['event_id' => $eventId]);
                 return response()->json(['success' => false, 'message' => 'Event not found'], 404);
             }
 
             $notificationData = [
                 'judge_id' => $judgeId,
                 'event_id' => $eventId,
-                'event_name' => $event->event_name,
-                'round_no' => $roundNo,
                 'message' => $message,
                 'timestamp' => now()->toDateTimeString()
             ];
 
-            \Log::info('Broadcasting notification', $notificationData);
-
             // Broadcast notification to judge
             event(new \App\Events\JudgeNotification($notificationData));
 
-            \Log::info('Notification broadcast successfully');
 
             return response()->json(['success' => true, 'message' => 'Notification sent successfully']);
         } catch (\Exception $e) {
-            \Log::error('Error in notifyJudge', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
-            ]);
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }

@@ -136,6 +136,27 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getTabulationDataByRound/{eventId}/{roundNo}', [ScoreController::class, 'getTabulationDataByRound']);
     Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
     Route::post('/admin/notify-judge', [ScoreController::class, 'notifyJudge']);
+    
+    // Test route
+    Route::get('/test-notification/{judgeId}', function($judgeId) {
+        $notification = [
+            'judge_id' => $judgeId,
+            'event_id' => 7,
+            'event_name' => 'Test Event',
+            'round_no' => 1,
+            'message' => 'This is a test notification',
+            'timestamp' => now()->toDateTimeString()
+        ];
+        
+        event(new \App\Events\JudgeNotification($notification));
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Test notification sent',
+            'channel' => 'judge-notifications.' . $judgeId,
+            'event' => 'judge.notification'
+        ]);
+    });
 
     //medals
     Route::get('/getMedalTallies', [MedalController::class, 'getMedalTallies']);

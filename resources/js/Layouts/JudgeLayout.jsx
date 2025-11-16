@@ -66,51 +66,55 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         };
     }, [currentChannel]);
 
-    // Listen for judge notifications - using global Echo instance  
+    // Listen for judge notifications from admin - EXACTLY like admin listens for help requests
     useEffect(() => {
-        console.log('🔧 Notification useEffect triggered');
+        if (!user?.id) return;
+
+        console.log('🔧 Setting up judge notification listener for user:', user.id);
+
+        // Listen on the specific judge's channel
+        const channelName = `judge-notifications.${user.id}`;
         
+        // Use the global Echo instance that's already initialized
         if (!window.Echo) {
-            console.error('❌ window.Echo is not available');
-            return;
-        }
-        
-        if (!user?.id) {
-            console.error('❌ user.id is not available', user);
+            console.error('❌ window.Echo not available');
             return;
         }
 
-        const channelName = `judge-notifications.${user.id}`;
-        console.log('📡 Attempting to subscribe to:', channelName);
+        console.log('📡 Subscribing to private channel:', channelName);
+        const channel = window.Echo.private(channelName);
         
-        try {
-            const channel = window.Echo.private(channelName);
+        // Log all Pusher events for debugging
+        if (window.Echo.connector && window.Echo.connector.pusher) {
+            const pusher = window.Echo.connector.pusher;
+            console.log('🔌 Pusher connection state:', pusher.connection.state);
             
-            channel.subscribed(() => {
-                console.log('✅ Successfully subscribed to:', channelName);
+            pusher.connection.bind('connected', () => {
+                console.log('✅ Pusher connected');
             });
             
-            channel.error((error) => {
-                console.error('❌ Channel subscription error:', error);
+            pusher.connection.bind('error', (err) => {
+                console.error('❌ Pusher connection error:', err);
             });
-            
-            channel.listen('.judge.notification', (data) => {
-                console.log('🔔 NOTIFICATION RECEIVED!', data);
-                setNotification(data.notification);
-                setShowNotificationModal(true);
-            });
-            
-            console.log('👂 Listener attached for .judge.notification');
-            
-        } catch (error) {
-            console.error('❌ Error in notification setup:', error);
         }
+        
+        channel.listen('.judge.notification', (data) => {
+            console.log('🔔 NOTIFICATION RECEIVED!', data);
+            
+            setNotification(data.notification);
+            setShowNotificationModal(true);
+
+            // Auto-hide after 30 seconds (optional)
+            setTimeout(() => {
+                setShowNotificationModal(false);
+            }, 30000);
+        });
+
+        console.log('✅ Judge notification listener set up on:', channelName);
 
         return () => {
-            console.log('🧹 Cleanup: leaving channel', channelName);
-            if (window.Echo) {
-                window.Echo.leave(channelName);
-            }
+            console.log('🧹 Cleanup: leaving channel:', channelName);
+            window.Echo.leave(channelName);
         };
     }, [user?.id]);
 
@@ -391,22 +395,14 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
             {showNotificationModal && notification && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                     <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 animate-bounce-in">
-                        <div className="bg-yellow-500 text-white px-6 py-4 rounded-t-lg flex items-center gap-3">
+                        <div className="bg-red-500 text-white px-6 py-4 rounded-t-lg flex items-center gap-3">
                             <svg className="w-8 h-8 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M10 2a6 6 0 00-6 6v3.586l-.707.707A1 1 0 004 14h12a1 1 0 00.707-1.707L16 11.586V8a6 6 0 00-6-6zM10 18a3 3 0 01-3-3h6a3 3 0 01-3 3z" />
                             </svg>
                             <h3 className="text-xl font-bold">Admin Notification</h3>
                         </div>
                         <div className="p-6">
-                            <div className="mb-4">
-                                <p className="text-sm text-gray-600 mb-2">
-                                    <span className="font-semibold">Event:</span> {notification.event_name}
-                                </p>
-                                <p className="text-sm text-gray-600 mb-4">
-                                    <span className="font-semibold">Round:</span> {notification.round_no}
-                                </p>
-                            </div>
-                            <div className="bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-6">
+                            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6">
                                 <p className="text-gray-800 font-medium text-lg">
                                     {notification.message}
                                 </p>
@@ -419,7 +415,7 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                                     setShowNotificationModal(false);
                                     setNotification(null);
                                 }}
-                                className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
+                                className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-colors"
                             >
                                 Got it!
                             </button>

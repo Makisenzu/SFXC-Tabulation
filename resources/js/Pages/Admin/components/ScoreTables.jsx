@@ -30,6 +30,8 @@ const ScoreTables = () => {
     const [showSpecialAwardsModal, setShowSpecialAwardsModal] = useState(false);
     const [specialAwardsData, setSpecialAwardsData] = useState([]);
     const [showCriteriaDropdown, setShowCriteriaDropdown] = useState(false);
+    const [editingScore, setEditingScore] = useState(null);
+    const [tempScore, setTempScore] = useState('');
     const dropdownRef = useRef(null);
 
     // Fetch events on component mount
@@ -230,6 +232,91 @@ const ScoreTables = () => {
             console.error('Error sending notification:', error);
             console.error('Error response:', error.response?.data);
             alert(`Failed to send notification: ${error.response?.data?.message || error.message}`);
+        }
+    };
+
+    // Handle score cell click for editing
+    const handleScoreCellClick = (judgeId, contestantId, criteriaId, currentScore) => {
+        setEditingScore({ judgeId, contestantId, criteriaId });
+        setTempScore(currentScore === '0.00' ? '' : currentScore);
+    };
+
+    // Handle score input change
+    const handleScoreInputChange = (e) => {
+        const value = e.target.value;
+        // Allow empty or valid decimal numbers between 0 and 10
+        if (value === '' || (/^\d*\.?\d*$/.test(value) && parseFloat(value) <= 10)) {
+            setTempScore(value);
+        }
+    };
+
+    // Handle score update submission
+    const handleScoreUpdate = async (judgeId, contestantId, criteriaId) => {
+        const scoreValue = parseFloat(tempScore) || 0;
+        
+        if (scoreValue < 0 || scoreValue > 10) {
+            alert('Score must be between 0 and 10');
+            return;
+        }
+
+        try {
+            const response = await axios.post('/admin/update-score', {
+                judge_id: judgeId,
+                contestant_id: contestantId,
+                criteria_id: criteriaId,
+                event_id: selectedEvent,
+                round_no: selectedRound,
+                score: scoreValue
+            });
+
+            if (response.data.success) {
+                // Update local state immediately
+                const updatedScore = {
+                    id: response.data.tabulation.id,
+                    judge_id: judgeId,
+                    contestant_id: contestantId,
+                    criteria_id: criteriaId,
+                    score: scoreValue,
+                    is_lock: response.data.tabulation.is_lock
+                };
+
+                setScores(prevScores => {
+                    const existingIndex = prevScores.findIndex(
+                        s => s.judge_id === judgeId && 
+                             s.contestant_id === contestantId && 
+                             s.criteria_id === criteriaId
+                    );
+
+                    if (existingIndex >= 0) {
+                        const newScores = [...prevScores];
+                        newScores[existingIndex] = updatedScore;
+                        return newScores;
+                    } else {
+                        return [...prevScores, updatedScore];
+                    }
+                });
+
+                setEditingScore(null);
+                setTempScore('');
+            }
+        } catch (error) {
+            console.error('Error updating score:', error);
+            alert(`Failed to update score: ${error.response?.data?.message || error.message}`);
+        }
+    };
+
+    // Handle clicking outside the input to cancel editing
+    const handleScoreBlur = () => {
+        setEditingScore(null);
+        setTempScore('');
+    };
+
+    // Handle Enter key to submit, Escape to cancel
+    const handleScoreKeyDown = (e, judgeId, contestantId, criteriaId) => {
+        if (e.key === 'Enter') {
+            handleScoreUpdate(judgeId, contestantId, criteriaId);
+        } else if (e.key === 'Escape') {
+            handleScoreBlur();
         }
     };
 
@@ -1177,17 +1264,34 @@ const ScoreTables = () => {
                                                     {criteria.map(criterion => {
                                                         const score = getScore(judge.id, ranking.id, criterion.id);
                                                         const hasScore = parseFloat(score) > 0;
+                                                        const isEditing = editingScore?.judgeId === judge.id && 
+                                                                         editingScore?.contestantId === ranking.id && 
+                                                                         editingScore?.criteriaId === criterion.id;
                                                         
                                                         return (
                                                             <td
                                                                 key={criterion.id}
-                                                                className={`px-4 py-3 text-center border-r border-gray-300 ${
+                                                                className={`px-4 py-3 text-center border-r border-gray-300 cursor-pointer hover:bg-blue-50 ${
                                                                     hasScore ? 'bg-yellow-300' : ''
-                                                                }`}
+                                                                } ${isEditing ? 'bg-blue-100' : ''}`}
+                                                                onClick={() => !isEditing && handleScoreCellClick(judge.id, ranking.id, criterion.id, score)}
                                                             >
-                                                                <span className="text-gray-900 font-medium">
-                                                                    {score}
-                                                                </span>
+                                                                {isEditing ? (
+                                                                    <input
+                                                                        type="text"
+                                                                        value={tempScore}
+                                                                        onChange={handleScoreInputChange}
+                                                                        onBlur={handleScoreBlur}
+                                                                        onKeyDown={(e) => handleScoreKeyDown(e, judge.id, ranking.id, criterion.id)}
+                                                                        className="w-16 px-2 py-1 text-center border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                        autoFocus
+                                                                        placeholder="0-10"
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-gray-900 font-medium">
+                                                                        {score}
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                         );
                                                     })}

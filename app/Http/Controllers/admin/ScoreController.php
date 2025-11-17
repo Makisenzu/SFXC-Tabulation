@@ -322,6 +322,77 @@ class ScoreController extends Controller
     }
 
     /**
+     * Update score from admin panel
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function updateScore(Request $request)
+    {
+        try {
+            $request->validate([
+                'judge_id' => 'required|exists:users,id',
+                'contestant_id' => 'required|exists:contestants,id',
+                'criteria_id' => 'required|exists:criterias,id',
+                'event_id' => 'required|exists:events,id',
+                'round_no' => 'required|integer',
+                'score' => 'required|numeric|min:0|max:10',
+            ]);
+
+            // Get the active record for the round
+            $active = Active::where('event_id', $request->event_id)
+                ->where('round_no', $request->round_no)
+                ->first();
+
+            if (!$active) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Active round not found'
+                ], 404);
+            }
+
+            // Get the round record for this contestant
+            $round = Round::where('active_id', $active->id)
+                ->where('contestant_id', $request->contestant_id)
+                ->first();
+
+            if (!$round) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Contestant not found in this round'
+                ], 404);
+            }
+
+            // Find or create tabulation record
+            $tabulation = Tabulation::updateOrCreate(
+                [
+                    'round_id' => $round->id,
+                    'user_id' => $request->judge_id,
+                    'criteria_id' => $request->criteria_id,
+                ],
+                [
+                    'score' => $request->score,
+                ]
+            );
+
+            // Broadcast the score update
+            event(new \App\Events\JudgeScores($tabulation));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Score updated successfully',
+                'tabulation' => $tabulation
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update score: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
      * Send notification to judge to enter scores
      * 
      * @param Request $request

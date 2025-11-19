@@ -35,6 +35,14 @@ class SyncController extends Controller
 
             $syncData = $this->prepareAllData();
 
+            Log::info('Starting sync to online server', [
+                'url' => $onlineUrl,
+                'event_count' => count($syncData['events']),
+                'event_ids' => collect($syncData['events'])->pluck('id')->toArray(),
+                'active_count' => count($syncData['actives']),
+                'active_event_ids' => collect($syncData['actives'])->pluck('event_id')->unique()->toArray()
+            ]);
+
             // Send data to online server
             $response = Http::withHeaders([
                 'Authorization' => 'Bearer ' . $apiKey,
@@ -45,6 +53,15 @@ class SyncController extends Controller
 
             if ($response->successful()) {
                 DB::commit();
+                
+                // Cache last sync time
+                cache(['last_sync_time' => now()], now()->addDays(30));
+                
+                Log::info('Sync completed successfully', [
+                    'events' => count($syncData['events']),
+                    'contestants' => count($syncData['contestants'])
+                ]);
+                
                 return response()->json([
                     'success' => true,
                     'message' => 'Data synced successfully to online server',
@@ -57,11 +74,19 @@ class SyncController extends Controller
                     ]
                 ]);
             } else {
+                Log::error('Sync failed - Server error', [
+                    'status' => $response->status(),
+                    'body' => $response->body()
+                ]);
                 throw new \Exception('Online server returned error: ' . $response->body());
             }
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Sync failed - Exception', [
+                'error' => $e->getMessage(),
+                'url' => $onlineUrl ?? 'N/A'
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage()
@@ -106,20 +131,66 @@ class SyncController extends Controller
             // STEP 1: Sync parent tables first (no dependencies)
             
             // Sync Events (must be first - parent to many tables)
+            $eventsSynced = 0;
             foreach ($data['events'] ?? [] as $event) {
-                Event::updateOrCreate(
-                    ['id' => $event['id']],
-                    $event
-                );
+                try {
+                    // Use DB::table for more control
+                    DB::table('events')->updateOrInsert(
+                        ['id' => $event['id']],
+                        [
+                            'event_name' => $event['event_name'],
+                            'event_type' => $event['event_type'],
+                            'description' => $event['description'] ?? null,
+                            'event_start' => $event['event_start'],
+                            'event_end' => $event['event_end'],
+                            'is_active' => $event['is_active'] ?? 1,
+                            'is_archived' => $event['is_archived'] ?? 0,
+                            'created_at' => $event['created_at'] ?? now(),
+                            'updated_at' => $event['updated_at'] ?? now(),
+                        ]
+                    );
+                    $eventsSynced++;
+                    Log::info('Event synced', ['event_id' => $event['id'], 'event_name' => $event['event_name'] ?? 'unknown']);
+                } catch (\Exception $e) {
+                    Log::error('Event sync failed', [
+                        'event_id' => $event['id'] ?? 'unknown',
+                        'error' => $e->getMessage(),
+                        'trace' => $e->getTraceAsString()
+                    ]);
+                }
             }
+            
+            Log::info('Events sync completed', ['total' => $eventsSynced]);
 
             // STEP 2: Sync Actives (depends on events) - BEFORE criteria and rounds
+            $activesSynced = 0;
             foreach ($data['actives'] ?? [] as $active) {
-                Active::updateOrCreate(
-                    ['id' => $active['id']],
-                    $active
-                );
+                try {
+                    // Verify event exists
+                    $eventExists = Event::find($active['event_id']);
+                    if (!$eventExists) {
+                        Log::error('Active sync failed - Event not found', [
+                            'active_event_id' => $active['event_id'],
+                            'round_no' => $active['round_no'] ?? 'unknown'
+                        ]);
+                        continue;
+                    }
+                    
+                    Active::updateOrCreate(
+                        ['id' => $active['id']],
+                        $active
+                    );
+                    $activesSynced++;
+                } catch (\Exception $e) {
+                    Log::error('Active sync failed', [
+                        'active_id' => $active['id'] ?? 'unknown',
+                        'event_id' => $active['event_id'] ?? 'unknown',
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
+            
+            Log::info('Actives sync completed', ['total' => $activesSynced]);
 
             // STEP 3: Sync Users (skip existing judges)
             foreach ($data['users'] ?? [] as $user) {

@@ -96,7 +96,9 @@ class SyncController extends Controller
 
             $data = $validated['data'];
 
-            // Sync Events
+            // STEP 1: Sync parent tables first (no dependencies)
+            
+            // Sync Events (must be first - parent to many tables)
             foreach ($data['events'] ?? [] as $event) {
                 Event::updateOrCreate(
                     ['id' => $event['id']],
@@ -104,47 +106,7 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Contestants
-            foreach ($data['contestants'] ?? [] as $contestant) {
-                Contestant::updateOrCreate(
-                    ['id' => $contestant['id']],
-                    $contestant
-                );
-            }
-
-            // Sync Criteria
-            foreach ($data['criteria'] ?? [] as $criteria) {
-                Criteria::updateOrCreate(
-                    ['id' => $criteria['id']],
-                    $criteria
-                );
-            }
-
-            // Sync Actives (Rounds)
-            foreach ($data['actives'] ?? [] as $active) {
-                Active::updateOrCreate(
-                    ['id' => $active['id']],
-                    $active
-                );
-            }
-
-            // Sync Rounds
-            foreach ($data['rounds'] ?? [] as $round) {
-                Round::updateOrCreate(
-                    ['id' => $round['id']],
-                    $round
-                );
-            }
-
-            // Sync Tabulations (Judge Scores)
-            foreach ($data['tabulations'] ?? [] as $tabulation) {
-                Tabulation::updateOrCreate(
-                    ['id' => $tabulation['id']],
-                    $tabulation
-                );
-            }
-
-            // Sync Judges
+            // Sync Judges (must be before assignments)
             foreach ($data['users'] ?? [] as $user) {
                 User::updateOrCreate(
                     ['id' => $user['id']],
@@ -152,15 +114,7 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Judge Assignments
-            foreach ($data['assigns'] ?? [] as $assign) {
-                Assign::updateOrCreate(
-                    ['id' => $assign['id']],
-                    $assign
-                );
-            }
-
-            // Sync Medal Tallies
+            // Sync Medal Tallies (must be before participants)
             foreach ($data['medal_tallies'] ?? [] as $tally) {
                 MedalTally::updateOrCreate(
                     ['id' => $tally['id']],
@@ -168,7 +122,59 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Medal Participants
+            // STEP 2: Sync child tables (depend on events)
+            
+            // Sync Contestants (depends on events)
+            foreach ($data['contestants'] ?? [] as $contestant) {
+                Contestant::updateOrCreate(
+                    ['id' => $contestant['id']],
+                    $contestant
+                );
+            }
+
+            // Sync Criteria (depends on events)
+            foreach ($data['criteria'] ?? [] as $criteria) {
+                Criteria::updateOrCreate(
+                    ['id' => $criteria['id']],
+                    $criteria
+                );
+            }
+
+            // Sync Rounds (depends on events)
+            foreach ($data['rounds'] ?? [] as $round) {
+                Round::updateOrCreate(
+                    ['id' => $round['id']],
+                    $round
+                );
+            }
+
+            // Sync Actives (depends on events and rounds)
+            foreach ($data['actives'] ?? [] as $active) {
+                Active::updateOrCreate(
+                    ['id' => $active['id']],
+                    $active
+                );
+            }
+
+            // STEP 3: Sync relationship tables (depend on multiple tables)
+            
+            // Sync Judge Assignments (depends on events and users)
+            foreach ($data['assigns'] ?? [] as $assign) {
+                Assign::updateOrCreate(
+                    ['id' => $assign['id']],
+                    $assign
+                );
+            }
+
+            // Sync Tabulations (depends on events, contestants, criteria, users)
+            foreach ($data['tabulations'] ?? [] as $tabulation) {
+                Tabulation::updateOrCreate(
+                    ['id' => $tabulation['id']],
+                    $tabulation
+                );
+            }
+
+            // Sync Medal Participants (depends on medal_tallies and contestants)
             foreach ($data['medal_participants'] ?? [] as $participant) {
                 MedalTallyParticipant::updateOrCreate(
                     ['id' => $participant['id']],
@@ -176,7 +182,7 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Medal Scores
+            // Sync Medal Scores (depends on medal_tallies and contestants)
             foreach ($data['medal_scores'] ?? [] as $score) {
                 MedalScore::updateOrCreate(
                     ['id' => $score['id']],

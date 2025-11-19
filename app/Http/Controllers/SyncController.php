@@ -113,19 +113,26 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Judges (must be before assignments)
+            // STEP 2: Sync Actives (depends on events) - BEFORE criteria and rounds
+            foreach ($data['actives'] ?? [] as $active) {
+                Active::updateOrCreate(
+                    ['id' => $active['id']],
+                    $active
+                );
+            }
+
+            // STEP 3: Sync Users (skip existing judges)
             foreach ($data['users'] ?? [] as $user) {
-                // Check if user exists by ID or username
-                $existingUser = User::where('id', $user['id'])
-                    ->orWhere('username', $user['username'])
-                    ->first();
+                // Check if user exists by username
+                $existingUser = User::where('username', $user['username'])->first();
                 
-                if ($existingUser) {
-                    // Update existing user
-                    $existingUser->update($user);
-                } else {
-                    // Create new user
-                    User::create($user);
+                if (!$existingUser) {
+                    // Only create new users, don't update existing judges
+                    try {
+                        User::create($user);
+                    } catch (\Exception $e) {
+                        Log::warning('User creation skipped', ['username' => $user['username']]);
+                    }
                 }
             }
 
@@ -137,26 +144,17 @@ class SyncController extends Controller
                 );
             }
 
-            // STEP 2: Sync child tables (depend on events)
+            // STEP 4: Sync child tables (depend on events)
             
             // Sync Contestants (depends on events)
             foreach ($data['contestants'] ?? [] as $contestant) {
-                // Check if contestant exists by ID or unique combination
-                $existingContestant = Contestant::where('id', $contestant['id'])
-                    ->orWhere(function($query) use ($contestant) {
-                        $query->where('event_id', $contestant['event_id'])
-                              ->where('sequence_no', $contestant['sequence_no']);
-                    })
-                    ->first();
-                
-                if ($existingContestant) {
-                    $existingContestant->update($contestant);
-                } else {
-                    Contestant::create($contestant);
-                }
+                Contestant::updateOrCreate(
+                    ['id' => $contestant['id']],
+                    $contestant
+                );
             }
 
-            // Sync Criteria (depends on events)
+            // Sync Criteria (depends on events and actives)
             foreach ($data['criteria'] ?? [] as $criteria) {
                 Criteria::updateOrCreate(
                     ['id' => $criteria['id']],
@@ -164,7 +162,7 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Rounds (depends on events)
+            // Sync Rounds (depends on contestants and actives)
             foreach ($data['rounds'] ?? [] as $round) {
                 Round::updateOrCreate(
                     ['id' => $round['id']],
@@ -172,30 +170,30 @@ class SyncController extends Controller
                 );
             }
 
-            // Sync Actives (depends on events and rounds)
-            foreach ($data['actives'] ?? [] as $active) {
-                Active::updateOrCreate(
-                    ['id' => $active['id']],
-                    $active
-                );
-            }
-
-            // STEP 3: Sync relationship tables (depend on multiple tables)
+            // STEP 5: Sync relationship tables (depend on multiple tables)
             
             // Sync Judge Assignments (depends on events and users)
             foreach ($data['assigns'] ?? [] as $assign) {
-                Assign::updateOrCreate(
-                    ['id' => $assign['id']],
-                    $assign
-                );
+                try {
+                    Assign::updateOrCreate(
+                        ['id' => $assign['id']],
+                        $assign
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Assign sync skipped', ['assign_id' => $assign['id'] ?? 'unknown']);
+                }
             }
 
-            // Sync Tabulations (depends on events, contestants, criteria, users)
+            // Sync Tabulations (depends on rounds, users, criteria)
             foreach ($data['tabulations'] ?? [] as $tabulation) {
-                Tabulation::updateOrCreate(
-                    ['id' => $tabulation['id']],
-                    $tabulation
-                );
+                try {
+                    Tabulation::updateOrCreate(
+                        ['id' => $tabulation['id']],
+                        $tabulation
+                    );
+                } catch (\Exception $e) {
+                    Log::warning('Tabulation sync skipped', ['tabulation_id' => $tabulation['id'] ?? 'unknown']);
+                }
             }
 
             // Sync Medal Participants (depends on medal_tallies and contestants)

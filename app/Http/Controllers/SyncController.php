@@ -2,20 +2,21 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
+use App\Models\Event;
+use App\Models\Round;
+use App\Models\Active;
+use App\Models\Assign;
+use App\Models\Criteria;
+use App\Models\Contestant;
+use App\Models\MedalScore;
+use App\Models\MedalTally;
+use App\Models\Tabulation;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
-use App\Models\Event;
-use App\Models\Contestant;
-use App\Models\Criteria;
-use App\Models\Active;
-use App\Models\Round;
-use App\Models\Tabulation;
-use App\Models\User;
-use App\Models\Assign;
-use App\Models\MedalTally;
 use App\Models\MedalTallyParticipant;
-use App\Models\MedalScore;
 
 class SyncController extends Controller
 {
@@ -95,6 +96,12 @@ class SyncController extends Controller
             DB::beginTransaction();
 
             $data = $validated['data'];
+            
+            Log::info('Receiving sync data', [
+                'event_count' => count($data['events'] ?? []),
+                'contestant_count' => count($data['contestants'] ?? []),
+                'user_count' => count($data['users'] ?? [])
+            ]);
 
             // STEP 1: Sync parent tables first (no dependencies)
             
@@ -108,10 +115,18 @@ class SyncController extends Controller
 
             // Sync Judges (must be before assignments)
             foreach ($data['users'] ?? [] as $user) {
-                User::updateOrCreate(
-                    ['id' => $user['id']],
-                    $user
-                );
+                // Check if user exists by ID or username
+                $existingUser = User::where('id', $user['id'])
+                    ->orWhere('username', $user['username'])
+                    ->first();
+                
+                if ($existingUser) {
+                    // Update existing user
+                    $existingUser->update($user);
+                } else {
+                    // Create new user
+                    User::create($user);
+                }
             }
 
             // Sync Medal Tallies (must be before participants)
@@ -126,10 +141,19 @@ class SyncController extends Controller
             
             // Sync Contestants (depends on events)
             foreach ($data['contestants'] ?? [] as $contestant) {
-                Contestant::updateOrCreate(
-                    ['id' => $contestant['id']],
-                    $contestant
-                );
+                // Check if contestant exists by ID or unique combination
+                $existingContestant = Contestant::where('id', $contestant['id'])
+                    ->orWhere(function($query) use ($contestant) {
+                        $query->where('event_id', $contestant['event_id'])
+                              ->where('sequence_no', $contestant['sequence_no']);
+                    })
+                    ->first();
+                
+                if ($existingContestant) {
+                    $existingContestant->update($contestant);
+                } else {
+                    Contestant::create($contestant);
+                }
             }
 
             // Sync Criteria (depends on events)
@@ -191,6 +215,12 @@ class SyncController extends Controller
             }
 
             DB::commit();
+            
+            Log::info('Sync data received successfully', [
+                'events_synced' => count($data['events'] ?? []),
+                'contestants_synced' => count($data['contestants'] ?? []),
+                'users_synced' => count($data['users'] ?? [])
+            ]);
 
             return response()->json([
                 'success' => true,
@@ -200,6 +230,10 @@ class SyncController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Receive sync failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json([
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage()

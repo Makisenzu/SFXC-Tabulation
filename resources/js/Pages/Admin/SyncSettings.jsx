@@ -7,8 +7,8 @@ export default function SyncSettings({ auth }) {
     const [syncing, setSyncing] = useState(false);
     const [syncResult, setSyncResult] = useState(null);
     const [config, setConfig] = useState({
-        online_url: '',
-        api_key: ''
+        online_url: 'https://sfxcresults.online',
+        api_key: 'l3rza+xd480MhO2Eh1EU8bRV7MGTNhJAeKJS+UK6yHM='
     });
 
     const handleSync = async () => {

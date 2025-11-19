@@ -27,6 +27,13 @@ The SFXC Tabulation System is a professional-grade scoring platform that enables
 - **Score Locking**: Lock scores after submission to prevent accidental changes
 - **Automatic Calculation**: Real-time total score computation
 
+### Online Sync
+- **Database Sync**: Sync local data to online server for public viewing
+- **Foreign Key Protection**: Automatic table sequence enforcement prevents data corruption
+- **Atomic Transactions**: All-or-nothing sync ensures data integrity
+- **Real-time Monitoring**: View sync status and statistics
+- **See**: `DATABASE_IMPORT_SEQUENCE.md` and `SYNC_IMPLEMENTATION.md`
+
 ### Judge Management
 - **Judge Assignment**: Assign multiple judges to events
 - **Role-Based Access**: Separate interfaces for administrators and judges

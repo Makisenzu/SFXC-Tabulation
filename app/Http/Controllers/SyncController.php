@@ -96,17 +96,27 @@ class SyncController extends Controller
 
     private function prepareAllData()
     {
+        // Data organized in correct foreign key dependency order
+        // Following DATABASE_IMPORT_SEQUENCE.md
         return [
+            // LEVEL 1: Base tables (no dependencies)
+            'roles' => \App\Models\Role::all()->toArray(),
             'events' => Event::all()->toArray(),
-            'contestants' => Contestant::all()->toArray(),
-            'criteria' => Criteria::all()->toArray(),
-            'actives' => Active::all()->toArray(),
-            'rounds' => Round::all()->toArray(),
-            'tabulations' => Tabulation::all()->toArray(),
+            
+            // LEVEL 2: Tables depending on Level 1
             'users' => User::where('role_id', 2)->get()->toArray(), // Only judges
+            'contestants' => Contestant::all()->toArray(),
+            'actives' => Active::all()->toArray(),
             'assigns' => Assign::all()->toArray(),
             'medal_tallies' => MedalTally::all()->toArray(),
+            
+            // LEVEL 3: Tables depending on Level 2
+            'criteria' => Criteria::all()->toArray(),
+            'rounds' => Round::all()->toArray(),
             'medal_participants' => MedalTallyParticipant::all()->toArray(),
+            
+            // LEVEL 4: Tables depending on Level 3 (CRITICAL - Contains Scores!)
+            'tabulations' => Tabulation::all()->toArray(),
             'medal_scores' => MedalScore::all()->toArray(),
         ];
     }
@@ -119,252 +129,138 @@ class SyncController extends Controller
 
         try {
             DB::beginTransaction();
-            
-            // Disable foreign key checks temporarily for sync
-            DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
             $data = $validated['data'];
             
-            Log::info('Receiving sync data', [
-                'event_count' => count($data['events'] ?? []),
-                'contestant_count' => count($data['contestants'] ?? []),
-                'user_count' => count($data['users'] ?? [])
+            Log::info('Starting sync with proper table sequence', [
+                'events' => count($data['events'] ?? []),
+                'users' => count($data['users'] ?? []),
+                'tabulations' => count($data['tabulations'] ?? [])
             ]);
 
-            // STEP 1: Sync parent tables first (no dependencies)
-            
-            // Sync Events (must be first - parent to many tables)
-            $eventsSynced = 0;
-            foreach ($data['events'] ?? [] as $event) {
-                try {
-                    // First, delete if exists to avoid conflicts
-                    Event::where('id', $event['id'])->delete();
-                    
-                    // Then insert fresh
-                    Event::insert([
-                        'id' => $event['id'],
-                        'event_name' => $event['event_name'],
-                        'event_type' => $event['event_type'],
-                        'description' => $event['description'] ?? null,
-                        'event_start' => $event['event_start'],
-                        'event_end' => $event['event_end'],
-                        'is_active' => $event['is_active'] ?? 1,
-                        'is_archived' => $event['is_archived'] ?? 0,
-                        'created_at' => now(),
-                        'updated_at' => now(),
-                    ]);
-                    
-                    $eventsSynced++;
-                    Log::info('Event synced', ['event_id' => $event['id'], 'event_name' => $event['event_name'] ?? 'unknown']);
-                } catch (\Exception $e) {
-                    Log::error('Event sync failed', [
-                        'event_id' => $event['id'] ?? 'unknown',
-                        'event_name' => $event['event_name'] ?? 'unknown',
-                        'error' => $e->getMessage(),
-                        'trace' => substr($e->getTraceAsString(), 0, 500)
-                    ]);
-                    throw $e; // Re-throw to stop sync if events fail
-                }
-            }
-            
-            Log::info('Events sync completed', ['total' => $eventsSynced]);
-            
-            // Verify events were inserted
-            $insertedEventIds = Event::pluck('id')->toArray();
-            Log::info('Events now in database', ['event_ids' => $insertedEventIds]);
+            $stats = [];
 
-            // STEP 2: Sync Actives (depends on events) - BEFORE criteria and rounds
-            $activesSynced = 0;
-            foreach ($data['actives'] ?? [] as $active) {
-                try {
-                    // Verify event exists
-                    $eventExists = Event::find($active['event_id']);
-                    if (!$eventExists) {
-                        Log::error('Active sync failed - Event not found', [
-                            'active_event_id' => $active['event_id'],
-                            'round_no' => $active['round_no'] ?? 'unknown'
-                        ]);
-                        continue;
-                    }
-                    
-                    Active::updateOrCreate(
-                        ['id' => $active['id']],
-                        $active
-                    );
-                    $activesSynced++;
-                } catch (\Exception $e) {
-                    Log::error('Active sync failed', [
-                        'active_id' => $active['id'] ?? 'unknown',
-                        'event_id' => $active['event_id'] ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
+            // ========================================
+            // LEVEL 1: Base Tables (No Dependencies)
+            // ========================================
             
-            Log::info('Actives sync completed', ['total' => $activesSynced]);
+            // Sync Roles (if provided)
+            $stats['roles'] = $this->syncTable($data['roles'] ?? [], \App\Models\Role::class, 'roles');
+            
+            // Sync Events
+            $stats['events'] = $this->syncTable($data['events'] ?? [], Event::class, 'events');
 
-            // STEP 3: Sync Users (skip existing judges)
-            foreach ($data['users'] ?? [] as $user) {
-                // Check if user exists by username
-                $existingUser = User::where('username', $user['username'])->first();
-                
-                if (!$existingUser) {
-                    // Only create new users, don't update existing judges
-                    try {
-                        User::create($user);
-                    } catch (\Exception $e) {
-                        Log::warning('User creation skipped', ['username' => $user['username']]);
-                    }
-                }
-            }
-
-            // Sync Medal Tallies (must be before participants)
-            foreach ($data['medal_tallies'] ?? [] as $tally) {
-                MedalTally::updateOrCreate(
-                    ['id' => $tally['id']],
-                    $tally
-                );
-            }
-
-            // STEP 4: Sync child tables (depend on events)
+            // ========================================
+            // LEVEL 2: Tables Depending on Level 1
+            // ========================================
+            
+            // Sync Users (judges only)
+            $stats['users'] = $this->syncUsers($data['users'] ?? []);
             
             // Sync Contestants (depends on events)
-            foreach ($data['contestants'] ?? [] as $contestant) {
-                Contestant::updateOrCreate(
-                    ['id' => $contestant['id']],
-                    $contestant
-                );
-            }
-
-            // Sync Criteria (depends on events and actives)
-            $criteriaSynced = 0;
-            foreach ($data['criteria'] ?? [] as $criteria) {
-                try {
-                    Criteria::updateOrCreate(
-                        ['id' => $criteria['id']],
-                        $criteria
-                    );
-                    $criteriaSynced++;
-                } catch (\Exception $e) {
-                    Log::error('Criteria sync failed', [
-                        'criteria_id' => $criteria['id'] ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-            Log::info('Criteria synced', ['total' => $criteriaSynced]);
-
-            // Sync Rounds (depends on contestants and actives)
-            $roundsSynced = 0;
-            foreach ($data['rounds'] ?? [] as $round) {
-                try {
-                    Round::updateOrCreate(
-                        ['id' => $round['id']],
-                        $round
-                    );
-                    $roundsSynced++;
-                } catch (\Exception $e) {
-                    Log::error('Round sync failed', [
-                        'round_id' => $round['id'] ?? 'unknown',
-                        'contestant_id' => $round['contestant_id'] ?? 'unknown',
-                        'active_id' => $round['active_id'] ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-            Log::info('Rounds synced', ['total' => $roundsSynced]);
-
-            // STEP 5: Sync relationship tables (depend on multiple tables)
+            $stats['contestants'] = $this->syncTable($data['contestants'] ?? [], Contestant::class, 'contestants');
             
-            // Sync Judge Assignments (depends on events and users)
-            foreach ($data['assigns'] ?? [] as $assign) {
-                try {
-                    Assign::updateOrCreate(
-                        ['id' => $assign['id']],
-                        $assign
-                    );
-                } catch (\Exception $e) {
-                    Log::warning('Assign sync skipped', ['assign_id' => $assign['id'] ?? 'unknown']);
-                }
-            }
+            // Sync Actives (depends on events)
+            $stats['actives'] = $this->syncTable($data['actives'] ?? [], Active::class, 'actives');
+            
+            // Sync Assigns (depends on events, users)
+            $stats['assigns'] = $this->syncTable($data['assigns'] ?? [], Assign::class, 'assigns');
+            
+            // Sync Medal Tallies
+            $stats['medal_tallies'] = $this->syncTable($data['medal_tallies'] ?? [], MedalTally::class, 'medal_tallies');
 
-            // Sync Tabulations (depends on rounds, users, criteria)
-            $tabulationsSynced = 0;
-            foreach ($data['tabulations'] ?? [] as $tabulation) {
-                try {
-                    Tabulation::updateOrCreate(
-                        ['id' => $tabulation['id']],
-                        $tabulation
-                    );
-                    $tabulationsSynced++;
-                } catch (\Exception $e) {
-                    Log::error('Tabulation sync failed', [
-                        'tabulation_id' => $tabulation['id'] ?? 'unknown',
-                        'round_id' => $tabulation['round_id'] ?? 'unknown',
-                        'user_id' => $tabulation['user_id'] ?? 'unknown',
-                        'criteria_id' => $tabulation['criteria_id'] ?? 'unknown',
-                        'error' => $e->getMessage()
-                    ]);
-                }
-            }
-            Log::info('Tabulations synced', ['total' => $tabulationsSynced]);
+            // ========================================
+            // LEVEL 3: Tables Depending on Level 2
+            // ========================================
+            
+            // Sync Criterias (depends on events, actives)
+            $stats['criteria'] = $this->syncTable($data['criteria'] ?? [], Criteria::class, 'criteria');
+            
+            // Sync Rounds (depends on contestants, actives)
+            $stats['rounds'] = $this->syncTable($data['rounds'] ?? [], Round::class, 'rounds');
+            
+            // Sync Medal Participants (depends on medal_tallies)
+            $stats['medal_participants'] = $this->syncTable($data['medal_participants'] ?? [], MedalTallyParticipant::class, 'medal_participants');
 
-            // Sync Medal Participants (depends on medal_tallies and contestants)
-            foreach ($data['medal_participants'] ?? [] as $participant) {
-                MedalTallyParticipant::updateOrCreate(
-                    ['id' => $participant['id']],
-                    $participant
-                );
-            }
-
-            // Sync Medal Scores (depends on medal_tallies and contestants)
-            foreach ($data['medal_scores'] ?? [] as $score) {
-                MedalScore::updateOrCreate(
-                    ['id' => $score['id']],
-                    $score
-                );
-            }
+            // ========================================
+            // LEVEL 4: Critical Tables (SCORES!)
+            // ========================================
+            
+            // Sync Tabulations - CONTAINS ALL SCORES (depends on rounds, users, criterias)
+            $stats['tabulations'] = $this->syncTable($data['tabulations'] ?? [], Tabulation::class, 'tabulations');
+            
+            // Sync Medal Scores (depends on medal_tallies, events, medal_participants)
+            $stats['medal_scores'] = $this->syncTable($data['medal_scores'] ?? [], MedalScore::class, 'medal_scores');
 
             DB::commit();
             
-            // Re-enable foreign key checks
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            
-            $syncSummary = [
-                'events_synced' => $eventsSynced ?? 0,
-                'actives_synced' => $activesSynced ?? 0,
-                'contestants_synced' => count($data['contestants'] ?? []),
-                'criteria_synced' => $criteriaSynced ?? 0,
-                'rounds_synced' => $roundsSynced ?? 0,
-                'tabulations_synced' => $tabulationsSynced ?? 0,
-                'users_synced' => count($data['users'] ?? []),
-                'medal_tallies_synced' => count($data['medal_tallies'] ?? []),
-            ];
-            
-            Log::info('Sync data received successfully', $syncSummary);
+            Log::info('Sync completed successfully with correct sequence', $stats);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Data received and synced successfully',
+                'message' => 'Data synced successfully in correct foreign key order',
                 'synced_at' => now()->toISOString(),
-                'summary' => $syncSummary
+                'summary' => $stats
             ]);
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            // Re-enable foreign key checks on error
-            DB::statement('SET FOREIGN_KEY_CHECKS=1');
-            
-            Log::error('Receive sync failed', [
+            Log::error('Sync failed - Rolling back all changes', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
             return response()->json([
                 'success' => false,
                 'message' => 'Sync failed: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    private function syncTable(array $records, string $modelClass, string $tableName): int
+    {
+        $synced = 0;
+        foreach ($records as $record) {
+            try {
+                $modelClass::updateOrCreate(
+                    ['id' => $record['id']],
+                    $record
+                );
+                $synced++;
+            } catch (\Exception $e) {
+                Log::error("Failed to sync {$tableName} record", [
+                    'table' => $tableName,
+                    'record_id' => $record['id'] ?? 'unknown',
+                    'error' => $e->getMessage()
+                ]);
+                throw new \Exception("Foreign key constraint failed for {$tableName}: " . $e->getMessage());
+            }
+        }
+        Log::info("{$tableName} synced", ['count' => $synced]);
+        return $synced;
+    }
+
+    private function syncUsers(array $users): int
+    {
+        $synced = 0;
+        foreach ($users as $user) {
+            $existingUser = User::where('username', $user['username'])->first();
+            
+            if (!$existingUser) {
+                try {
+                    User::create($user);
+                    $synced++;
+                } catch (\Exception $e) {
+                    Log::warning('User creation skipped', [
+                        'username' => $user['username'],
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
+        }
+        Log::info('Users synced', ['count' => $synced]);
+        return $synced;
     }
 
     public function getSyncStatus()

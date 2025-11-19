@@ -119,6 +119,9 @@ class SyncController extends Controller
 
         try {
             DB::beginTransaction();
+            
+            // Disable foreign key checks temporarily for sync
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
             $data = $validated['data'];
             
@@ -134,33 +137,41 @@ class SyncController extends Controller
             $eventsSynced = 0;
             foreach ($data['events'] ?? [] as $event) {
                 try {
-                    // Use DB::table for more control
-                    DB::table('events')->updateOrInsert(
-                        ['id' => $event['id']],
-                        [
-                            'event_name' => $event['event_name'],
-                            'event_type' => $event['event_type'],
-                            'description' => $event['description'] ?? null,
-                            'event_start' => $event['event_start'],
-                            'event_end' => $event['event_end'],
-                            'is_active' => $event['is_active'] ?? 1,
-                            'is_archived' => $event['is_archived'] ?? 0,
-                            'created_at' => $event['created_at'] ?? now(),
-                            'updated_at' => $event['updated_at'] ?? now(),
-                        ]
-                    );
+                    // First, delete if exists to avoid conflicts
+                    Event::where('id', $event['id'])->delete();
+                    
+                    // Then insert fresh
+                    Event::insert([
+                        'id' => $event['id'],
+                        'event_name' => $event['event_name'],
+                        'event_type' => $event['event_type'],
+                        'description' => $event['description'] ?? null,
+                        'event_start' => $event['event_start'],
+                        'event_end' => $event['event_end'],
+                        'is_active' => $event['is_active'] ?? 1,
+                        'is_archived' => $event['is_archived'] ?? 0,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                    
                     $eventsSynced++;
                     Log::info('Event synced', ['event_id' => $event['id'], 'event_name' => $event['event_name'] ?? 'unknown']);
                 } catch (\Exception $e) {
                     Log::error('Event sync failed', [
                         'event_id' => $event['id'] ?? 'unknown',
+                        'event_name' => $event['event_name'] ?? 'unknown',
                         'error' => $e->getMessage(),
-                        'trace' => $e->getTraceAsString()
+                        'trace' => substr($e->getTraceAsString(), 0, 500)
                     ]);
+                    throw $e; // Re-throw to stop sync if events fail
                 }
             }
             
             Log::info('Events sync completed', ['total' => $eventsSynced]);
+            
+            // Verify events were inserted
+            $insertedEventIds = Event::pluck('id')->toArray();
+            Log::info('Events now in database', ['event_ids' => $insertedEventIds]);
 
             // STEP 2: Sync Actives (depends on events) - BEFORE criteria and rounds
             $activesSynced = 0;
@@ -285,6 +296,9 @@ class SyncController extends Controller
 
             DB::commit();
             
+            // Re-enable foreign key checks
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            
             Log::info('Sync data received successfully', [
                 'events_synced' => count($data['events'] ?? []),
                 'contestants_synced' => count($data['contestants'] ?? []),
@@ -299,6 +313,10 @@ class SyncController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            
+            // Re-enable foreign key checks on error
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+            
             Log::error('Receive sync failed', [
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()

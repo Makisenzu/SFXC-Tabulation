@@ -29,7 +29,8 @@ export default function SyncSettings({ auth }) {
             setSyncResult({
                 success: true,
                 message: response.data.message,
-                stats: response.data.stats
+                stats: response.data.stats,
+                summary: response.data.summary
             });
             localStorage.setItem('sync_config', JSON.stringify(config));
         } catch (error) {
@@ -136,6 +137,19 @@ export default function SyncSettings({ auth }) {
                                             <div className="text-green-700">Contestants: {syncResult.stats.contestants}</div>
                                             <div className="text-green-700">Tallies: {syncResult.stats.tallies}</div>
                                             <div className="text-green-700">Scores: {syncResult.stats.scores}</div>
+                                        </div>
+                                    )}
+                                    {syncResult.summary && (
+                                        <div className="mt-3 pt-3 border-t border-green-300">
+                                            <div className="text-sm font-semibold text-green-800 mb-2">Sync Details:</div>
+                                            <div className="grid grid-cols-2 gap-2 text-xs text-green-700">
+                                                <div>✓ Events: {syncResult.summary.events_synced}</div>
+                                                <div>✓ Actives: {syncResult.summary.actives_synced}</div>
+                                                <div>✓ Contestants: {syncResult.summary.contestants_synced}</div>
+                                                <div>✓ Criteria: {syncResult.summary.criteria_synced}</div>
+                                                <div>✓ Rounds: {syncResult.summary.rounds_synced}</div>
+                                                <div>✓ Tabulations: {syncResult.summary.tabulations_synced}</div>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

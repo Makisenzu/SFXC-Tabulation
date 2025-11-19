@@ -237,20 +237,42 @@ class SyncController extends Controller
             }
 
             // Sync Criteria (depends on events and actives)
+            $criteriaSynced = 0;
             foreach ($data['criteria'] ?? [] as $criteria) {
-                Criteria::updateOrCreate(
-                    ['id' => $criteria['id']],
-                    $criteria
-                );
+                try {
+                    Criteria::updateOrCreate(
+                        ['id' => $criteria['id']],
+                        $criteria
+                    );
+                    $criteriaSynced++;
+                } catch (\Exception $e) {
+                    Log::error('Criteria sync failed', [
+                        'criteria_id' => $criteria['id'] ?? 'unknown',
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
+            Log::info('Criteria synced', ['total' => $criteriaSynced]);
 
             // Sync Rounds (depends on contestants and actives)
+            $roundsSynced = 0;
             foreach ($data['rounds'] ?? [] as $round) {
-                Round::updateOrCreate(
-                    ['id' => $round['id']],
-                    $round
-                );
+                try {
+                    Round::updateOrCreate(
+                        ['id' => $round['id']],
+                        $round
+                    );
+                    $roundsSynced++;
+                } catch (\Exception $e) {
+                    Log::error('Round sync failed', [
+                        'round_id' => $round['id'] ?? 'unknown',
+                        'contestant_id' => $round['contestant_id'] ?? 'unknown',
+                        'active_id' => $round['active_id'] ?? 'unknown',
+                        'error' => $e->getMessage()
+                    ]);
+                }
             }
+            Log::info('Rounds synced', ['total' => $roundsSynced]);
 
             // STEP 5: Sync relationship tables (depend on multiple tables)
             
@@ -267,16 +289,25 @@ class SyncController extends Controller
             }
 
             // Sync Tabulations (depends on rounds, users, criteria)
+            $tabulationsSynced = 0;
             foreach ($data['tabulations'] ?? [] as $tabulation) {
                 try {
                     Tabulation::updateOrCreate(
                         ['id' => $tabulation['id']],
                         $tabulation
                     );
+                    $tabulationsSynced++;
                 } catch (\Exception $e) {
-                    Log::warning('Tabulation sync skipped', ['tabulation_id' => $tabulation['id'] ?? 'unknown']);
+                    Log::error('Tabulation sync failed', [
+                        'tabulation_id' => $tabulation['id'] ?? 'unknown',
+                        'round_id' => $tabulation['round_id'] ?? 'unknown',
+                        'user_id' => $tabulation['user_id'] ?? 'unknown',
+                        'criteria_id' => $tabulation['criteria_id'] ?? 'unknown',
+                        'error' => $e->getMessage()
+                    ]);
                 }
             }
+            Log::info('Tabulations synced', ['total' => $tabulationsSynced]);
 
             // Sync Medal Participants (depends on medal_tallies and contestants)
             foreach ($data['medal_participants'] ?? [] as $participant) {
@@ -299,16 +330,24 @@ class SyncController extends Controller
             // Re-enable foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
             
-            Log::info('Sync data received successfully', [
-                'events_synced' => count($data['events'] ?? []),
+            $syncSummary = [
+                'events_synced' => $eventsSynced ?? 0,
+                'actives_synced' => $activesSynced ?? 0,
                 'contestants_synced' => count($data['contestants'] ?? []),
-                'users_synced' => count($data['users'] ?? [])
-            ]);
+                'criteria_synced' => $criteriaSynced ?? 0,
+                'rounds_synced' => $roundsSynced ?? 0,
+                'tabulations_synced' => $tabulationsSynced ?? 0,
+                'users_synced' => count($data['users'] ?? []),
+                'medal_tallies_synced' => count($data['medal_tallies'] ?? []),
+            ];
+            
+            Log::info('Sync data received successfully', $syncSummary);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Data received and synced successfully',
-                'synced_at' => now()->toISOString()
+                'synced_at' => now()->toISOString(),
+                'summary' => $syncSummary
             ]);
 
         } catch (\Exception $e) {

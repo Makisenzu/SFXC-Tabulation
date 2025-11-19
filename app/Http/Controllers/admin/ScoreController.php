@@ -4,14 +4,14 @@ namespace App\Http\Controllers\admin;
 
 use App\Models\User;
 use App\Models\Event;
+use App\Models\Round;
 use App\Models\Active;
 use App\Models\Assign;
 use App\Models\Criteria;
 use App\Models\Contestant;
-use App\Models\Round;
 use App\Models\Tabulation;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\Controller;
 
 class ScoreController extends Controller
@@ -86,13 +86,18 @@ class ScoreController extends Controller
                 ->first();
 
             if (!$active) {
+                Log::warning('Active not found', ['event_id' => $eventId, 'round_no' => $roundNo]);
                 return response()->json([]);
             }
 
-            // Get all contestants in this round
-            $contestantIds = Round::where('active_id', $active->id)
-                ->pluck('contestant_id')
-                ->toArray();
+            // Get all rounds for this active
+            $rounds = Round::where('active_id', $active->id)->get();
+            $roundIds = $rounds->pluck('id')->toArray();
+            
+            if (empty($roundIds)) {
+                Log::warning('No rounds found', ['active_id' => $active->id]);
+                return response()->json([]);
+            }
 
             // Get all criteria for this round
             $criteriaIds = Criteria::where('event_id', $eventId)
@@ -106,27 +111,45 @@ class ScoreController extends Controller
                 ->pluck('user_id')
                 ->toArray();
 
-            // Get all tabulation records (scores) for this round
-            $scores = Tabulation::whereHas('round', function($query) use ($active) {
-                    $query->where('active_id', $active->id);
-                })
+            // Get all tabulations for these rounds - WITHOUT eager loading
+            $tabulations = Tabulation::whereIn('round_id', $roundIds)
                 ->whereIn('criteria_id', $criteriaIds)
                 ->whereIn('user_id', $judgeIds)
-                ->with(['round.contestant', 'criteria', 'user'])
-                ->get()
-                ->map(function($tabulation) {
-                    return [
+                ->get();
+
+            // Manually build the scores array to avoid broken relationships
+            $scores = [];
+            foreach ($tabulations as $tabulation) {
+                // Find the round manually from our collection
+                $round = $rounds->firstWhere('id', $tabulation->round_id);
+                
+                if ($round) {
+                    $scores[] = [
                         'id' => $tabulation->id,
                         'judge_id' => $tabulation->user_id,
-                        'contestant_id' => $tabulation->round->contestant_id,
+                        'contestant_id' => $round->contestant_id,
                         'criteria_id' => $tabulation->criteria_id,
-                        'score' => $tabulation->score,
-                        'is_lock' => $tabulation->is_lock,
+                        'score' => (float)$tabulation->score,
+                        'is_lock' => (int)$tabulation->is_lock,
                     ];
-                });
+                }
+            }
+
+            Log::info('Scores retrieved', [
+                'event_id' => $eventId,
+                'round_no' => $roundNo,
+                'tabulations_count' => $tabulations->count(),
+                'scores_count' => count($scores)
+            ]);
 
             return response()->json($scores);
         } catch (\Exception $e) {
+            Log::error('getScoresByRound error', [
+                'event_id' => $eventId,
+                'round_no' => $roundNo,
+                'error' => $e->getMessage(),
+                'line' => $e->getLine()
+            ]);
             return response()->json(['error' => $e->getMessage()], 500);
         }
     }

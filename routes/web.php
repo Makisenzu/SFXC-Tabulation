@@ -138,6 +138,26 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::post('/admin/update-score', [ScoreController::class, 'updateScore']);
     Route::post('/admin/notify-judge', [ScoreController::class, 'notifyJudge']);
     
+    // Debug route to check database data
+    Route::get('/debug-scores/{eventId}/{roundNo}', function($eventId, $roundNo) {
+        $active = \App\Models\Active::where('event_id', $eventId)->where('round_no', $roundNo)->first();
+        if (!$active) {
+            return response()->json(['error' => 'Active not found', 'event_id' => $eventId, 'round_no' => $roundNo]);
+        }
+        
+        $rounds = \App\Models\Round::where('active_id', $active->id)->get();
+        $roundIds = $rounds->pluck('id')->toArray();
+        $tabulations = \App\Models\Tabulation::whereIn('round_id', $roundIds)->get();
+        
+        return response()->json([
+            'active' => $active,
+            'rounds_count' => $rounds->count(),
+            'rounds' => $rounds,
+            'tabulations_count' => $tabulations->count(),
+            'tabulations' => $tabulations->take(10)
+        ]);
+    });
+    
     // Test route
     Route::get('/test-notification/{judgeId}', function($judgeId) {
         $notification = [

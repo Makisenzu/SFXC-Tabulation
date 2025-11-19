@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Round extends Model
 {
     protected $fillable = [
+        'id',
         'contestant_id',
         'active_id'
     ];

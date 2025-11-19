@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Criteria extends Model
 {
     protected $fillable = [
+        'id',
         'event_id',
         'active_id', 
         'criteria_desc',

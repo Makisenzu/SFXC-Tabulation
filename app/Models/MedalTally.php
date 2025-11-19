@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class MedalTally extends Model
 {
     protected $fillable = [
+        'id',
         'tally_title'
     ];
 

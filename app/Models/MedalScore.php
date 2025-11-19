@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class MedalScore extends Model
 {
     protected $fillable = [
+        'id',
         'medal_tally_id',
         'event_id',
         'participant_id',

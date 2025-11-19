@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Assign extends Model
 {
     protected $fillable = [
+        'id',
         'event_id',
         'user_id'
     ];

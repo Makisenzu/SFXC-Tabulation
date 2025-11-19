@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Tabulation extends Model
 {
     protected $fillable = [
+        'id',
         'round_id',
         'user_id',
         'criteria_id',

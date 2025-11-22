@@ -53,13 +53,10 @@ class EventController extends Controller
 
         $eventData = Event::findOrFail($id);
         
-        // If setting to inactive, automatically archive the event
         if ($validatedData['is_active'] == 0 && $eventData->is_active == 1) {
-            // Archive the event
             $this->archiveEventData($eventData);
             $validatedData['is_archived'] = 1;
         } elseif ($validatedData['is_active'] == 1 && $eventData->is_archived == 1) {
-            // If reactivating an archived event, unarchive it
             $validatedData['is_archived'] = 0;
         }
         
@@ -68,7 +65,6 @@ class EventController extends Controller
     }
     
     private function archiveEventData($event) {
-        // Load event with all relationships
         $event->load([
             'contestants',
             'criterias',
@@ -76,12 +72,10 @@ class EventController extends Controller
             'actives.rounds.tabulations.user'
         ]);
 
-        // Collect all data for archiving
         $archiveData = [
             'contestants' => [],
         ];
 
-        // Get all contestants with their rounds and scores
         foreach ($event->contestants as $contestant) {
             $contestantData = [
                 'id' => $contestant->id,
@@ -91,7 +85,6 @@ class EventController extends Controller
                 'rounds' => []
             ];
 
-            // Get rounds for this contestant
             $rounds = \App\Models\Round::where('contestant_id', $contestant->id)
                 ->with(['active', 'tabulations.criteria', 'tabulations.user'])
                 ->get();
@@ -117,10 +110,8 @@ class EventController extends Controller
             $archiveData['contestants'][] = $contestantData;
         }
 
-        // Calculate final rankings
         $rankings = $this->calculateRankings($event);
 
-        // Create or update archive record
         \App\Models\ResultArchive::updateOrCreate(
             ['event_id' => $event->id],
             [
@@ -158,12 +149,10 @@ class EventController extends Controller
             ];
         }
 
-        // Sort by total score descending
         usort($rankings, function($a, $b) {
             return $b['total_score'] <=> $a['total_score'];
         });
 
-        // Add rank
         foreach ($rankings as $index => &$ranking) {
             $ranking['rank'] = $index + 1;
         }
@@ -263,7 +252,6 @@ class EventController extends Controller
         $judges = User::where('role_id', 2)
             ->where('is_active', 1);
 
-        // Exclude judges who have active AND non-archived events assigned
         $judges = $judges->whereDoesntHave('assigns.event', function($query) {
             $query->where('is_active', 1)
                   ->where('is_archived', 0);

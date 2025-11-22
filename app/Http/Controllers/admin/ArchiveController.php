@@ -35,13 +35,11 @@ class ArchiveController extends Controller
                 'actives.rounds.tabulations'
             ])->findOrFail($eventId);
 
-            // Collect all data for archiving
             $archiveData = [
                 'contestants' => [],
                 'rounds' => []
             ];
 
-            // Get all contestants with their rounds and scores
             foreach ($event->contestants as $contestant) {
                 $contestantData = [
                     'id' => $contestant->id,
@@ -51,7 +49,6 @@ class ArchiveController extends Controller
                     'rounds' => []
                 ];
 
-                // Get rounds for this contestant
                 $rounds = Round::where('contestant_id', $contestant->id)
                     ->with(['active', 'tabulations.criteria', 'tabulations.user'])
                     ->get();
@@ -77,10 +74,8 @@ class ArchiveController extends Controller
                 $archiveData['contestants'][] = $contestantData;
             }
 
-            // Calculate final rankings
             $rankings = $this->calculateFinalRankings($event);
 
-            // Create archive record
             ResultArchive::create([
                 'event_id' => $event->id,
                 'final_results' => json_encode($archiveData),
@@ -89,7 +84,6 @@ class ArchiveController extends Controller
                 'archived_at' => now()
             ]);
 
-            // Update event status
             $event->update([
                 'is_archived' => 1,
                 'is_active' => 0
@@ -189,12 +183,10 @@ class ArchiveController extends Controller
             ];
         }
 
-        // Sort by total score descending
         usort($rankings, function($a, $b) {
             return $b['total_score'] <=> $a['total_score'];
         });
 
-        // Add rank
         foreach ($rankings as $index => &$ranking) {
             $ranking['rank'] = $index + 1;
         }

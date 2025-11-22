@@ -90,7 +90,6 @@ class MedalController extends Controller
             ]
         );
 
-        // Broadcast the update to all public viewers
         broadcast(new MedalTallyUpdated($validated['medal_tally_id']));
 
         return response()->json([

@@ -155,8 +155,6 @@ class ScoreController extends Controller
     }
 
     /**
-     * Get all tabulation data for a specific event and round
-     * This is a comprehensive endpoint that returns everything needed for the ScoreTables component
      * 
      * @param int $eventId
      * @param int $roundNo
@@ -165,7 +163,6 @@ class ScoreController extends Controller
     public function getTabulationDataByRound($eventId, $roundNo)
     {
         try {
-            // Get the active record for the round
             $active = Active::where('event_id', $eventId)
                 ->where('round_no', $roundNo)
                 ->first();
@@ -179,7 +176,6 @@ class ScoreController extends Controller
                 ]);
             }
 
-            // Get contestants in this round
             $contestants = Round::where('active_id', $active->id)
                 ->with('contestant')
                 ->get()
@@ -192,7 +188,6 @@ class ScoreController extends Controller
                     ];
                 });
 
-            // Get judges assigned to this event
             $judges = User::whereHas('assigns', function($query) use ($eventId) {
                     $query->where('event_id', $eventId);
                 })
@@ -201,14 +196,12 @@ class ScoreController extends Controller
                 ->select('id', 'username as name')
                 ->get();
 
-            // Get criteria for this round
             $criteria = Criteria::where('event_id', $eventId)
                 ->where('active_id', $active->id)
                 ->where('is_active', 1)
                 ->select('id', 'criteria_desc', 'definition', 'percentage')
                 ->get();
 
-            // Get all scores
             $criteriaIds = $criteria->pluck('id')->toArray();
             $judgeIds = $judges->pluck('id')->toArray();
 
@@ -242,7 +235,6 @@ class ScoreController extends Controller
     }
 
     /**
-     * Get overall rankings across all judges for a specific round
      * 
      * @param int $eventId
      * @param int $roundNo
@@ -251,7 +243,6 @@ class ScoreController extends Controller
     public function getOverallRankings($eventId, $roundNo)
     {
         try {
-            // Get the active record for the round
             $active = Active::where('event_id', $eventId)
                 ->where('round_no', $roundNo)
                 ->first();
@@ -260,18 +251,15 @@ class ScoreController extends Controller
                 return response()->json([]);
             }
 
-            // Get all contestants in this round
             $contestants = Round::where('active_id', $active->id)
                 ->with('contestant')
                 ->get();
 
-            // Get all criteria for this round
             $criteria = Criteria::where('event_id', $eventId)
                 ->where('active_id', $active->id)
                 ->where('is_active', 1)
                 ->get();
 
-            // Get all judges assigned to this event
             $judges = User::whereHas('assigns', function($query) use ($eventId) {
                     $query->where('event_id', $eventId);
                 })
@@ -314,12 +302,10 @@ class ScoreController extends Controller
                 ];
             }
 
-            // Sort by average percentage (descending)
             usort($rankings, function($a, $b) {
                 return $b['average_percentage'] <=> $a['average_percentage'];
             });
 
-            // Assign ranks
             $rank = 1;
             $previousPercentage = null;
             $sameRankCount = 0;
@@ -362,7 +348,6 @@ class ScoreController extends Controller
                 'score' => 'required|numeric|min:0|max:10',
             ]);
 
-            // Get the active record for the round
             $active = Active::where('event_id', $request->event_id)
                 ->where('round_no', $request->round_no)
                 ->first();
@@ -374,7 +359,6 @@ class ScoreController extends Controller
                 ], 404);
             }
 
-            // Get the round record for this contestant
             $round = Round::where('active_id', $active->id)
                 ->where('contestant_id', $request->contestant_id)
                 ->first();
@@ -386,7 +370,6 @@ class ScoreController extends Controller
                 ], 404);
             }
 
-            // Find or create tabulation record
             $tabulation = Tabulation::updateOrCreate(
                 [
                     'round_id' => $round->id,
@@ -398,7 +381,6 @@ class ScoreController extends Controller
                 ]
             );
 
-            // Broadcast the score update
             event(new \App\Events\JudgeScores($tabulation));
 
             return response()->json([
@@ -416,7 +398,6 @@ class ScoreController extends Controller
     }
 
     /**
-     * Send notification to judge to enter scores
      * 
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
@@ -430,14 +411,12 @@ class ScoreController extends Controller
             $roundNo = $request->input('round_no');
             $message = $request->input('message', 'Please enter your scores as soon as possible.');
 
-            // Get judge info
             $judge = User::find($judgeId);
             
             if (!$judge) {
                 return response()->json(['success' => false, 'message' => 'Judge not found'], 404);
             }
 
-            // Get event info
             $event = Event::find($eventId);
             
             if (!$event) {
@@ -451,7 +430,6 @@ class ScoreController extends Controller
                 'timestamp' => now()->toDateTimeString()
             ];
 
-            // Broadcast notification to judge
             event(new \App\Events\JudgeNotification($notificationData));
 
 

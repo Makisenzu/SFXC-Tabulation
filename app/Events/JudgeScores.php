@@ -25,13 +25,11 @@ class JudgeScores implements ShouldBroadcastNow
      */
     public function __construct(Tabulation $tabulation)
     {
-        // Load relationships
         $tabulation->load(['round.contestant', 'round.active', 'criteria', 'user']);
         
         $this->eventId = $tabulation->round->active->event_id;
         $this->roundNo = $tabulation->round->active->round_no;
         
-        // Prepare score data for broadcast
         $this->scoreData = [
             'tabulation_id' => $tabulation->id,
             'judge_id' => $tabulation->user_id,

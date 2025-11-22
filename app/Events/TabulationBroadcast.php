@@ -44,7 +44,6 @@ class TabulationBroadcast implements ShouldBroadcast
 
     private function prepareBroadcastData(Tabulation $tabulation)
     {
-        // Load all necessary relationships
         $tabulation->load([
             'round.contestant',
             'round.active.event',
@@ -55,7 +54,6 @@ class TabulationBroadcast implements ShouldBroadcast
         $activeRound = $tabulation->round->active;
         $event = $activeRound->event;
 
-        // Get all contestants for this round
         $contestants = Contestant::whereHas('rounds', function($query) use ($activeRound) {
             $query->where('active_id', $activeRound->id);
         })
@@ -65,13 +63,11 @@ class TabulationBroadcast implements ShouldBroadcast
         ->orderBy('sequence_no')
         ->get();
 
-        // Get all criteria for this round
         $criteria = Criteria::where('active_id', $activeRound->id)
             ->where('is_active', 1)
             ->orderBy('id')
             ->get();
 
-        // Get all scores for this round
         $allScores = Tabulation::whereHas('round', function($query) use ($activeRound) {
             $query->where('active_id', $activeRound->id);
         })
@@ -79,7 +75,6 @@ class TabulationBroadcast implements ShouldBroadcast
         ->get()
         ->groupBy('round.contestant_id');
 
-        // Prepare contestants data with their scores
         $contestantsData = $contestants->map(function($contestant) use ($allScores, $criteria) {
             $contestantScores = $allScores->get($contestant->id, collect());
             

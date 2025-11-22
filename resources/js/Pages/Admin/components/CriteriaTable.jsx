@@ -371,7 +371,7 @@ export default function CriteriaTable() {
                         </table>
                         </>
                     ) : (
-                        // Criteria Table - Grouped by Event
+                        // Criteria Table - Grouped by Event with Scrollable Content
                         <div className="bg-white">
                             {eventsWithCriteria.length === 0 ? (
                                 <div className="px-4 py-6 text-center text-sm text-gray-500">
@@ -382,127 +382,182 @@ export default function CriteriaTable() {
                                     </div>
                                 </div>
                             ) : (
-                                eventsWithCriteria.map((event) => {
-                                    const eventCriteria = criteriaByEvent[event.id] || [];
-                                    const isExpanded = expandedEvents.has(event.id);
-                                    
-                                    return (
-                                        <div key={event.id} className="border-b border-gray-200 last:border-b-0">
-                                            {/* Event Header */}
-                                            <div 
-                                                className="px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-150"
-                                                onClick={() => toggleEventExpansion(event.id)}
-                                            >
-                                                <div className="flex items-center justify-between">
-                                                    <div className="flex items-center">
-                                                        {isExpanded ? (
-                                                            <FaChevronDown className="w-4 h-4 text-gray-500 mr-2" />
-                                                        ) : (
-                                                            <FaChevronRight className="w-4 h-4 text-gray-500 mr-2" />
-                                                        )}
-                                                        <div className="flex items-center">
-                                                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full">
-                                                                <FaCalendarAlt className="w-4 h-4 text-blue-600" />
-                                                            </div>
-                                                            <div className="ml-3">
-                                                                <div className="text-sm font-medium text-gray-900">
-                                                                    {event.event_name}
+                                <div className="max-h-[600px] overflow-y-auto">
+                                    {eventsWithCriteria.map((event) => {
+                                        const eventCriteria = criteriaByEvent[event.id] || [];
+                                        const isExpanded = expandedEvents.has(event.id);
+                                        
+                                        return (
+                                            <div key={event.id} className="border-b border-gray-200 last:border-b-0">
+                                                {/* Event Header - Sticky */}
+                                                <div 
+                                                    className="sticky top-0 z-10 px-4 py-3 bg-gray-50 hover:bg-gray-100 cursor-pointer transition-colors duration-150 shadow-sm"
+                                                    onClick={() => toggleEventExpansion(event.id)}
+                                                >
+                                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                                        <div className="flex items-center flex-1 min-w-0">
+                                                            {isExpanded ? (
+                                                                <FaChevronDown className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                                            ) : (
+                                                                <FaChevronRight className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                                            )}
+                                                            <div className="flex items-center min-w-0 flex-1">
+                                                                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-blue-100 rounded-full">
+                                                                    <FaCalendarAlt className="w-4 h-4 text-blue-600" />
                                                                 </div>
-                                                                <div className="text-sm text-gray-500">
-                                                                    {event.event_type} • {eventCriteria.length} criteria
+                                                                <div className="ml-3 min-w-0">
+                                                                    <div className="text-sm font-medium text-gray-900 truncate">
+                                                                        {event.event_name}
+                                                                    </div>
+                                                                    <div className="text-xs sm:text-sm text-gray-500">
+                                                                        {event.event_type} • {eventCriteria.length} criteria
+                                                                    </div>
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="flex items-center space-x-2">
-                                                        {getStatusBadge(event.is_active)}
-                                                        {getArchiveBadge(event.is_archived)}
+                                                        <div className="flex items-center space-x-2 flex-shrink-0">
+                                                            {getStatusBadge(event.is_active)}
+                                                            {getArchiveBadge(event.is_archived)}
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
 
-                                            {/* Criteria Table for this Event */}
-                                            {isExpanded && (
-                                                <div className="bg-gray-25">
-                                                    <table className="min-w-full divide-y divide-gray-200">
-                                                        <thead className="bg-gray-100">
-                                                            <tr>
-                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Criteria
-                                                                </th>
-                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Description
-                                                                </th>
-                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Criteria %
-                                                                </th>
-                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Valid Round
-                                                                </th>
-                                                                <th scope="col" className="px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Status
-                                                                </th>
-                                                                <th scope="col" className="px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                    Actions
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="bg-white divide-y divide-gray-200">
+                                                {/* Criteria Table for this Event */}
+                                                {isExpanded && (
+                                                    <div className="bg-gray-25">
+                                                        {/* Mobile Card View */}
+                                                        <div className="block lg:hidden divide-y divide-gray-200">
                                                             {eventCriteria.map((criteria) => (
-                                                                <tr key={criteria.id} className="hover:bg-gray-50 transition-colors duration-150">
-                                                                    <td className="px-6 py-3">
-                                                                        <div className="flex items-center">
-                                                                            <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-green-100 rounded-full">
-                                                                                <FaListAlt className="w-3 h-3 text-green-600" />
+                                                                <div key={criteria.id} className="p-4 hover:bg-gray-50">
+                                                                    <div className="flex items-start justify-between mb-3">
+                                                                        <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-green-100 rounded-full">
+                                                                                <FaListAlt className="w-4 h-4 text-green-600" />
                                                                             </div>
-                                                                            <div className="ml-3">
-                                                                                <div className="text-sm font-medium text-gray-900">
-                                                                                    {criteria.criteria_desc}
-                                                                                </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <h4 className="text-sm font-semibold text-gray-900 mb-1">{criteria.criteria_desc}</h4>
+                                                                                <p className="text-xs text-gray-600">{criteria.definition || 'No description provided'}</p>
                                                                             </div>
                                                                         </div>
-                                                                    </td>
-                                                                    <td className="px-6 py-3">
-                                                                        <div className="text-sm text-gray-600 max-w-xs">
-                                                                            {criteria.definition || 'No description provided'}
+                                                                    </div>
+                                                                    
+                                                                    <div className="space-y-2 mb-3">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs text-gray-500">Percentage:</span>
+                                                                            {getPercentageDisplay(criteria.percentage)}
                                                                         </div>
-                                                                    </td>
-                                                                    <td className="px-6 py-3">
-                                                                        {getPercentageDisplay(criteria.percentage)}
-                                                                    </td>
-                                                                    <td className="px-6 py-3">
-                                                                        {getRoundBadge(criteria)}
-                                                                    </td>
-                                                                    <td className="px-6 py-3">
-                                                                        {getStatusBadge(criteria.is_active)}
-                                                                    </td>
-                                                                    <td className="px-6 py-3 text-right">
-                                                                        <div className="flex items-center justify-end space-x-1">
-                                                                            <button
-                                                                                onClick={() => openEditCriteria(criteria)}
-                                                                                className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
-                                                                            >
-                                                                                <FaEdit className="w-3 h-3 mr-1" />
-                                                                                Edit
-                                                                            </button>
-                                                                            <button
-                                                                                onClick={() => handleDeleteCriteria(criteria.id)}
-                                                                                className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
-                                                                            >
-                                                                                <FaTrash className="w-3 h-3 mr-1" />
-                                                                                Delete
-                                                                            </button>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs text-gray-500">Round:</span>
+                                                                            {getRoundBadge(criteria)}
                                                                         </div>
-                                                                    </td>
-                                                                </tr>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-xs text-gray-500">Status:</span>
+                                                                            {getStatusBadge(criteria.is_active)}
+                                                                        </div>
+                                                                    </div>
+                                                                    
+                                                                    <div className="flex gap-2">
+                                                                        <button
+                                                                            onClick={() => openEditCriteria(criteria)}
+                                                                            className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                                        >
+                                                                            <FaEdit className="w-3 h-3 mr-1" />
+                                                                            Edit
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteCriteria(criteria.id)}
+                                                                            className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700"
+                                                                        >
+                                                                            <FaTrash className="w-3 h-3" />
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
                                                             ))}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    );
-                                })
+                                                        </div>
+
+                                                        {/* Desktop Table View */}
+                                                        <div className="hidden lg:block overflow-x-auto">
+                                                            <table className="min-w-full divide-y divide-gray-200">
+                                                                <thead className="bg-gray-100 sticky top-[57px] z-[5]">
+                                                                    <tr>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Criteria
+                                                                        </th>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Description
+                                                                        </th>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Criteria %
+                                                                        </th>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Valid Round
+                                                                        </th>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Status
+                                                                        </th>
+                                                                        <th scope="col" className="px-4 sm:px-6 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                            Actions
+                                                                        </th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                    {eventCriteria.map((criteria) => (
+                                                                        <tr key={criteria.id} className="hover:bg-gray-50 transition-colors duration-150">
+                                                                            <td className="px-4 sm:px-6 py-3">
+                                                                                <div className="flex items-center">
+                                                                                    <div className="flex-shrink-0 w-6 h-6 flex items-center justify-center bg-green-100 rounded-full">
+                                                                                        <FaListAlt className="w-3 h-3 text-green-600" />
+                                                                                    </div>
+                                                                                    <div className="ml-3">
+                                                                                        <div className="text-sm font-medium text-gray-900">
+                                                                                            {criteria.criteria_desc}
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-4 sm:px-6 py-3">
+                                                                                <div className="text-sm text-gray-600 max-w-xs">
+                                                                                    {criteria.definition || 'No description provided'}
+                                                                                </div>
+                                                                            </td>
+                                                                            <td className="px-4 sm:px-6 py-3">
+                                                                                {getPercentageDisplay(criteria.percentage)}
+                                                                            </td>
+                                                                            <td className="px-4 sm:px-6 py-3">
+                                                                                {getRoundBadge(criteria)}
+                                                                            </td>
+                                                                            <td className="px-4 sm:px-6 py-3">
+                                                                                {getStatusBadge(criteria.is_active)}
+                                                                            </td>
+                                                                            <td className="px-4 sm:px-6 py-3 text-right">
+                                                                                <div className="flex items-center justify-end space-x-1">
+                                                                                    <button
+                                                                                        onClick={() => openEditCriteria(criteria)}
+                                                                                        className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                                                    >
+                                                                                        <FaEdit className="w-3 h-3 mr-1" />
+                                                                                        Edit
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteCriteria(criteria.id)}
+                                                                                        className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                                                    >
+                                                                                        <FaTrash className="w-3 h-3 mr-1" />
+                                                                                        Delete
+                                                                                    </button>
+                                                                                </div>
+                                                                            </td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
                             )}
                         </div>
                     )}

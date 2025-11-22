@@ -13,11 +13,13 @@ use Illuminate\Support\Facades\DB;
 
 class MedalController extends Controller
 {
-    public function getMedalTallies()
+    public function getMedalTallies(Request $request)
     {
+        $perPage = $request->input('per_page', 10);
+        
         $tallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->paginate($perPage);
         
         return response()->json($tallies);
     }

@@ -30,7 +30,7 @@ class EventController extends Controller
         $validatedData = $request->validate([
             'event_name' => ['required', 'string', 'max:255'],
             'event_type' => ['required', 'string'],
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
             'event_start' => ['required', 'date'],
             'event_end' => ['required', 'date', 'after:event_start'],
             'is_active' => ['required', 'integer', 'in:0,1'],
@@ -45,7 +45,7 @@ class EventController extends Controller
         $validatedData = $request->validate([
             'event_name' => ['required', 'string', 'max:255'],
             'event_type' => ['required', 'string'],
-            'description' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:255'],
             'event_start' => ['required', 'date'],
             'event_end' => ['required', 'date', 'after:event_start'],
             'is_active' => ['required', 'integer', 'in:0,1'],

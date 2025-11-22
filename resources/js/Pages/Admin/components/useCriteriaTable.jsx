@@ -185,6 +185,7 @@ export function useCriteriaTable() {
                 { value: 'Pageant', label: 'Pageant' },
                 { value: 'Singing', label: 'Singing' },
                 { value: 'Dancing', label: 'Dancing' },
+                { value: 'Others', label: 'Others' },
             ],
             required: true
         },
@@ -235,6 +236,7 @@ export function useCriteriaTable() {
                 { value: 'Pageant', label: 'Pageant' },
                 { value: 'Singing', label: 'Singing' },
                 { value: 'Dancing', label: 'Dancing' },
+                { value: 'Others', label: 'Others' },
             ],
             required: true
         },

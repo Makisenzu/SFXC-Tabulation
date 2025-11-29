@@ -111,6 +111,18 @@ export default function MedalTally({ tallies: initialTallies }) {
         }
     };
 
+    const getParticipantColor = (participantName) => {
+        const name = participantName.toUpperCase();
+        if (name.includes('CBE')) {
+            return 'border-l-4 border-yellow-500';
+        } else if (name.includes('CTE')) {
+            return 'border-l-4 border-blue-500';
+        } else if (name.includes('CCJE')) {
+            return 'border-l-4 border-red-500';
+        }
+        return 'border-l-4 border-gray-300';
+    };
+
     return (
         <PublicLayout>
             <Head title="Medal Tally" />
@@ -159,7 +171,7 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                     const counts = calculateMedalCounts(participant.id);
                                                     const rank = index + 1;
                                                     return (
-                                                        <div key={participant.id} className="bg-white rounded-lg p-5 border border-gray-200">
+                                                        <div key={participant.id} className={`bg-white rounded-lg p-5 border border-gray-200 ${getParticipantColor(participant.participant_name)}`}>
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <h4 className="font-semibold text-gray-900">{participant.participant_name}</h4>
                                                                 {counts.total > 0 && (

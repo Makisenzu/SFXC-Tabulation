@@ -98,6 +98,19 @@ export default function MedalTally({ tallies: initialTallies }) {
         });
     };
 
+    const getRankColor = (rank) => {
+        switch (rank) {
+            case 1:
+                return 'bg-yellow-400 text-yellow-900'; // Gold/Yellow for 1st
+            case 2:
+                return 'bg-blue-400 text-blue-900'; // Blue for 2nd
+            case 3:
+                return 'bg-red-400 text-red-900'; // Red for 3rd
+            default:
+                return 'bg-gray-200 text-gray-700';
+        }
+    };
+
     return (
         <PublicLayout>
             <Head title="Medal Tally" />
@@ -144,12 +157,15 @@ export default function MedalTally({ tallies: initialTallies }) {
                                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                                 {getSortedParticipants().map((participant, index) => {
                                                     const counts = calculateMedalCounts(participant.id);
+                                                    const rank = index + 1;
                                                     return (
                                                         <div key={participant.id} className="bg-white rounded-lg p-5 border border-gray-200">
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <h4 className="font-semibold text-gray-900">{participant.participant_name}</h4>
-                                                                {index === 0 && counts.total > 0 && (
-                                                                    <span className="text-xs font-medium text-gray-600">Rank 1</span>
+                                                                {counts.total > 0 && (
+                                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${getRankColor(rank)}`}>
+                                                                        Rank {rank}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                             <div className="space-y-3">

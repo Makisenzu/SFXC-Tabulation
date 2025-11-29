@@ -478,7 +478,7 @@ export default function CriteriaTable() {
                                                         {/* Desktop Table View */}
                                                         <div className="hidden lg:block overflow-x-auto">
                                                             <table className="min-w-full divide-y divide-gray-200">
-                                                                <thead className="bg-gray-100 sticky top-[57px] z-[5]">
+                                                                <thead className="bg-gray-100">
                                                                     <tr>
                                                                         <th scope="col" className="px-4 sm:px-6 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                             Criteria

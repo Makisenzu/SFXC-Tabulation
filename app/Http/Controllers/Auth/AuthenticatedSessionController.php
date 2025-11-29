@@ -37,6 +37,7 @@ class AuthenticatedSessionController extends Controller
         return match($user->role_id) {
             1 => redirect()->intended(route('admin.dashboard')),
             2 => redirect()->intended(route('judge.dashboard')),
+            3 => redirect()->intended(route('facilitator.dashboard')),
             default => redirect()->intended(route('home'))
         };
     }

@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
         // Create Roles
         $adminRole = Role::create(['role_name' => 'Admin']);
         $judgeRole = Role::create(['role_name' => 'Judge']);
+        $facilitatorRole = Role::create(['role_name' => 'Facilitator']);
 
         // Create Admin User
         User::create([
@@ -36,6 +37,14 @@ class DatabaseSeeder extends Seeder
         User::create([
             'role_id' => $judgeRole->id,
             'username' => 'judge2',
+            'password' => Hash::make('password'),
+            'is_active' => 1
+        ]);
+
+        // Create Facilitator User
+        User::create([
+            'role_id' => $facilitatorRole->id,
+            'username' => 'facilitator',
             'password' => Hash::make('password'),
             'is_active' => 1
         ]);
@@ -116,8 +125,9 @@ class DatabaseSeeder extends Seeder
         }
 
         $this->command->info('✅ Database seeded successfully!');
-        $this->command->info('📊 Created: 2 Roles, 3 Users, 3 Events, 15 Contestants');
+        $this->command->info('📊 Created: 3 Roles, 4 Users, 3 Events, 15 Contestants');
         $this->command->info('🔐 Admin credentials: username: admin, password: password');
         $this->command->info('🔐 Judge credentials: username: judge1/judge2, password: password');
+        $this->command->info('🔐 Facilitator credentials: username: facilitator, password: password');
     }
 }

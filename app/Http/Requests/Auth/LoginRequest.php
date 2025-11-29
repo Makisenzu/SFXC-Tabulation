@@ -49,6 +49,8 @@ class LoginRequest extends FormRequest
         
         if ($loginType === 'judge') {
             $this->authenticateJudge($credentials);
+        } elseif ($loginType === 'facilitator') {
+            $this->authenticateFacilitator($credentials);
         } else {
             $this->authenticateAdmin($credentials);
         }
@@ -92,6 +94,48 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
             throw ValidationException::withMessages([
                 'username' => 'This account is not authorized as judge',
+            ]);
+        }
+
+        Auth::login($user, $this->boolean('remember'));
+    }
+
+    /**
+     * Handle facilitator authentication with static password
+     */
+    protected function authenticateFacilitator(array $credentials): void
+    {
+        $staticPassword = '12345678';
+        
+        if ($credentials['password'] !== $staticPassword) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'Invalid facilitator credentials',
+            ]);
+        }
+
+        $user = User::where('username', $credentials['username'])
+                    ->with('role')
+                    ->first();
+
+        if (!$user) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'Facilitator account not found',
+            ]);
+        }
+
+        if ($user->is_active !== 1) {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'This facilitator is not available',
+            ]);
+        }
+
+        if ($user->role->role_name !== 'Facilitator') {
+            RateLimiter::hit($this->throttleKey());
+            throw ValidationException::withMessages([
+                'username' => 'This account is not authorized as facilitator',
             ]);
         }
 

@@ -50,6 +50,17 @@ Route::get('/judge', function() {
     return Inertia::render('Auth/JudgeLogin');
 })->name('judge.login');
 
+Route::get('/facilitator', function() {
+    if (Auth::check()) {
+        $user = Auth::user();
+        if ($user->role_id === 3) {
+            return redirect()->route('facilitator.dashboard');
+        }
+        return redirect('/');
+    }
+    return Inertia::render('Auth/FacilitatorLogin');
+})->name('facilitator.login');
+
 
 // Route::get('/', function () {
 //     return Inertia::render('Welcome', [
@@ -211,6 +222,15 @@ Route::middleware(['auth', 'role:Judge'])->group(function () {
     Route::patch('/judge/update-score', [JudgeController::class, 'updateScore'])->name('judge.update-score');
     
     Route::post('/judge/request-help', [JudgeController::class, 'requestHelp'])->name('judge.request-help');
+});
+
+Route::middleware(['auth', 'role:Facilitator'])->group(function () {
+    Route::get('/facilitator/dashboard', function (){
+        return Inertia::render('Facilitator/FacilitatorDashboard');
+    })->name('facilitator.dashboard');
+
+    Route::get('/facilitator/medal-tallies', [App\Http\Controllers\facilitator\FacilitatorController::class, 'getMedalTallies']);
+    Route::post('/facilitator/update-medal-score', [App\Http\Controllers\facilitator\FacilitatorController::class, 'updateMedalScore']);
 });
 
 Route::middleware('auth')->group(function () {

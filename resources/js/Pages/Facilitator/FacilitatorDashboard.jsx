@@ -6,12 +6,19 @@ import { FaTrophy, FaMedal } from 'react-icons/fa';
 export default function FacilitatorDashboard() {
     const [tallies, setTallies] = useState([]);
     const [selectedTally, setSelectedTally] = useState(null);
+    const [scores, setScores] = useState({});
     const [loading, setLoading] = useState(true);
     const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         fetchTallies();
     }, []);
+
+    useEffect(() => {
+        if (selectedTally) {
+            initializeScores();
+        }
+    }, [selectedTally]);
 
     const fetchTallies = async () => {
         try {
@@ -38,78 +45,93 @@ export default function FacilitatorDashboard() {
         }
     };
 
-    const handleScoreUpdate = async (eventId, participantId, score) => {
-        if (!selectedTally) return;
-        
-        setUpdating(true);
-        try {
-            const response = await fetch('/facilitator/update-medal-score', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                },
-                body: JSON.stringify({
-                    medal_tally_id: selectedTally.id,
-                    event_id: eventId,
-                    participant_id: participantId,
-                    score: score,
-                }),
-            });
+    const initializeScores = () => {
+        const initialScores = {};
+        selectedTally.scores?.forEach(score => {
+            const key = `${score.event_id}_${score.participant_id}`;
+            initialScores[key] = score.score;
+        });
+        setScores(initialScores);
+    };
 
-            if (response.ok) {
-                await fetchTallies();
+    const handleScoreChange = async (eventId, participantId, value) => {
+        const numValue = parseInt(value);
+        
+        if (value === '' || (numValue >= 1 && numValue <= 3)) {
+            const key = `${eventId}_${participantId}`;
+            setScores(prev => ({
+                ...prev,
+                [key]: value === '' ? '' : numValue
+            }));
+
+            if (value !== '' && numValue >= 1 && numValue <= 3) {
+                setUpdating(true);
+                try {
+                    const response = await fetch('/facilitator/update-medal-score', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        },
+                        body: JSON.stringify({
+                            medal_tally_id: selectedTally.id,
+                            event_id: eventId,
+                            participant_id: participantId,
+                            score: numValue
+                        }),
+                    });
+
+                    if (response.ok) {
+                        await fetchTallies();
+                    }
+                } catch (error) {
+                    console.error('Error updating score:', error);
+                    alert('Failed to update score');
+                } finally {
+                    setUpdating(false);
+                }
             }
-        } catch (error) {
-            console.error('Error updating score:', error);
-        } finally {
-            setUpdating(false);
         }
     };
 
     const getScore = (eventId, participantId) => {
-        if (!selectedTally) return 0;
-        const score = selectedTally.scores?.find(
-            s => s.event_id === eventId && s.participant_id === participantId
-        );
-        return score?.score || 0;
+        const key = `${eventId}_${participantId}`;
+        return scores[key] || '';
     };
 
-    const getMedalButton = (currentScore, targetScore, eventId, participantId, color, label) => {
-        const isActive = currentScore === targetScore;
-        const baseClasses = "px-3 py-2 sm:px-4 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-all duration-150 disabled:opacity-50";
-        const activeClasses = {
-            'Gold': 'bg-yellow-500 text-white border-2 border-yellow-600 shadow-md',
-            'Silver': 'bg-gray-400 text-white border-2 border-gray-500 shadow-md',
-            'Bronze': 'bg-orange-600 text-white border-2 border-orange-700 shadow-md',
-        };
-        const inactiveClasses = {
-            'Gold': 'bg-yellow-100 text-yellow-800 border-2 border-yellow-300 hover:bg-yellow-200',
-            'Silver': 'bg-gray-100 text-gray-800 border-2 border-gray-300 hover:bg-gray-200',
-            'Bronze': 'bg-orange-100 text-orange-800 border-2 border-orange-300 hover:bg-orange-200',
-        };
-
-        return (
-            <button
-                onClick={() => handleScoreUpdate(eventId, participantId, targetScore)}
-                disabled={updating}
-                className={`${baseClasses} ${isActive ? activeClasses[label] : inactiveClasses[label]}`}
-            >
-                {label}
-            </button>
-        );
-    };
-
-    const getParticipantColor = (participantName) => {
-        const name = participantName.toUpperCase();
-        if (name.includes('CBE')) {
-            return 'border-l-4 border-yellow-500 bg-yellow-50';
-        } else if (name.includes('CTE')) {
-            return 'border-l-4 border-blue-500 bg-blue-50';
-        } else if (name.includes('CCJE')) {
-            return 'border-l-4 border-red-500 bg-red-50';
+    const getMedalType = (score) => {
+        switch (parseInt(score)) {
+            case 1:
+                return { type: 'Bronze', color: 'text-orange-600', bg: 'bg-orange-50' };
+            case 2:
+                return { type: 'Silver', color: 'text-gray-500', bg: 'bg-gray-50' };
+            case 3:
+                return { type: 'Gold', color: 'text-yellow-500', bg: 'bg-yellow-50' };
+            default:
+                return null;
         }
-        return 'border-l-4 border-gray-300 bg-white';
+    };
+
+    const getMedalStats = (participantId) => {
+        const stats = { gold: 0, silver: 0, bronze: 0, total: 0 };
+        selectedTally?.events?.forEach(event => {
+            const score = getScore(event.id, participantId);
+            if (score) {
+                stats.total++;
+                switch (parseInt(score)) {
+                    case 3:
+                        stats.gold++;
+                        break;
+                    case 2:
+                        stats.silver++;
+                        break;
+                    case 1:
+                        stats.bronze++;
+                        break;
+                }
+            }
+        });
+        return stats;
     };
 
     if (loading) {
@@ -127,138 +149,152 @@ export default function FacilitatorDashboard() {
         <FacilitatorLayout header="Medal Tally Scoring">
             <Head title="Medal Tally - Facilitator" />
 
-            <div className="space-y-4 sm:space-y-6">
-                {/* Tally Selector */}
-                {tallies.length > 1 && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Select Medal Tally
-                        </label>
-                        <select
-                            value={selectedTally?.id || ''}
-                            onChange={(e) => setSelectedTally(tallies.find(t => t.id === parseInt(e.target.value)))}
-                            className="block w-full sm:max-w-md px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
-                        >
-                            {tallies.map(tally => (
-                                <option key={tally.id} value={tally.id}>{tally.tally_title}</option>
-                            ))}
-                        </select>
-                    </div>
-                )}
+            {tallies.length === 0 ? (
+                <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
+                    <FaTrophy className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
+                    <p className="text-gray-500 text-sm sm:text-base">No medal tallies available</p>
+                </div>
+            ) : (
+                <div className="space-y-4 sm:space-y-6">
+                    {/* Tally Selector */}
+                    {tallies.length > 1 && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                Select Medal Tally
+                            </label>
+                            <select
+                                value={selectedTally?.id || ''}
+                                onChange={(e) => setSelectedTally(tallies.find(t => t.id === parseInt(e.target.value)))}
+                                className="block w-full sm:max-w-md px-4 py-2 bg-white border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-gray-900 focus:border-gray-900"
+                            >
+                                {tallies.map(tally => (
+                                    <option key={tally.id} value={tally.id}>{tally.tally_title}</option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
-                {selectedTally && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
-                            <div className="flex items-center">
-                                <FaTrophy className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 mr-2 sm:mr-3" />
-                                <div>
-                                    <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedTally.tally_title}</h2>
-                                    <p className="text-xs sm:text-sm text-gray-600 mt-1">
-                                        {selectedTally.events?.length || 0} Events • {selectedTally.participants?.length || 0} Participants
-                                    </p>
+                    {selectedTally && (
+                        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            {/* Header */}
+                            <div className="p-4 sm:p-6 border-b border-gray-200 bg-gray-50">
+                                <div className="flex items-center">
+                                    <FaTrophy className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-500 mr-2 sm:mr-3" />
+                                    <div>
+                                        <h2 className="text-lg sm:text-xl font-semibold text-gray-900">{selectedTally.tally_title}</h2>
+                                        <p className="text-xs sm:text-sm text-gray-600 mt-1">
+                                            {selectedTally.events?.length || 0} Competitions • {selectedTally.participants?.length || 0} Participants
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        {/* Mobile View - Stacked Cards */}
-                        <div className="block lg:hidden p-4 space-y-4">
-                            {selectedTally.events?.map(event => (
-                                <div key={event.id} className="border border-gray-200 rounded-lg overflow-hidden">
-                                    <div className="bg-gray-100 px-4 py-3 border-b border-gray-200">
-                                        <h3 className="font-semibold text-gray-900 text-sm">{event.event_name}</h3>
-                                    </div>
-                                    <div className="p-4 space-y-4">
-                                        {selectedTally.participants?.map(participant => {
-                                            const currentScore = getScore(event.id, participant.id);
-                                            return (
-                                                <div key={participant.id} className={`rounded-lg p-4 border ${getParticipantColor(participant.participant_name)}`}>
-                                                    <h4 className="font-medium text-gray-900 mb-3 text-sm">{participant.participant_name}</h4>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {getMedalButton(currentScore, 3, event.id, participant.id, 'yellow', 'Gold')}
-                                                        {getMedalButton(currentScore, 2, event.id, participant.id, 'gray', 'Silver')}
-                                                        {getMedalButton(currentScore, 1, event.id, participant.id, 'orange', 'Bronze')}
-                                                        <button
-                                                            onClick={() => handleScoreUpdate(event.id, participant.id, 0)}
-                                                            disabled={updating}
-                                                            className={`px-3 py-2 rounded-lg font-medium text-xs transition-all duration-150 ${
-                                                                currentScore === 0
-                                                                    ? 'bg-red-100 text-red-800 border-2 border-red-300'
-                                                                    : 'bg-gray-100 text-gray-600 border-2 border-gray-300 hover:bg-gray-200'
-                                                            }`}
-                                                        >
-                                                            Clear
-                                                        </button>
+                            {/* Content */}
+                            <div className="p-4 sm:p-6">
+                                {/* Medal Statistics */}
+                                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+                                    {selectedTally.participants?.map(participant => {
+                                        const stats = getMedalStats(participant.id);
+                                        return (
+                                            <div key={participant.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                                                <h4 className="font-semibold text-gray-900 mb-2 truncate text-sm sm:text-base">{participant.participant_name}</h4>
+                                                <div className="space-y-1 text-xs sm:text-sm">
+                                                    <div className="flex items-center gap-2">
+                                                        <FaMedal className="text-yellow-500 flex-shrink-0" size={14} />
+                                                        <span>Gold: {stats.gold}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <FaMedal className="text-gray-400 flex-shrink-0" size={14} />
+                                                        <span>Silver: {stats.silver}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <FaMedal className="text-orange-600 flex-shrink-0" size={14} />
+                                                        <span>Bronze: {stats.bronze}</span>
+                                                    </div>
+                                                    <div className="font-semibold text-blue-700 pt-1 border-t border-blue-200">
+                                                        Total: {stats.total}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Scoring Instructions */}
+                                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-xs sm:text-sm text-blue-800">
+                                        <strong>How to score:</strong> Enter 1 for Bronze, 2 for Silver, or 3 for Gold. Scores are saved automatically.
+                                    </p>
+                                </div>
+
+                                {/* Scoring Table */}
+                                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div className="overflow-x-auto max-h-[400px] sm:max-h-[500px] overflow-y-auto">
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50 sticky top-0 z-10">
+                                                <tr>
+                                                    <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider sticky left-0 bg-gray-50 z-20 shadow-sm">
+                                                        Competition
+                                                    </th>
+                                                    {selectedTally.participants?.map(participant => (
+                                                        <th key={participant.id} className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-700 uppercase tracking-wider min-w-[120px] sm:min-w-[150px]">
+                                                            <div className="truncate">{participant.participant_name}</div>
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {selectedTally.events?.map(event => (
+                                                    <tr key={event.id} className="hover:bg-gray-50">
+                                                        <td className="px-3 sm:px-6 py-4 text-xs sm:text-sm font-medium text-gray-900 sticky left-0 bg-white z-10 shadow-sm min-w-[150px] sm:min-w-[200px]">
+                                                            <div className="line-clamp-2">{event.event_name}</div>
+                                                        </td>
+                                                        {selectedTally.participants?.map(participant => {
+                                                            const score = getScore(event.id, participant.id);
+                                                            const medal = getMedalType(score);
+                                                            
+                                                            return (
+                                                                <td key={participant.id} className="px-3 sm:px-6 py-4">
+                                                                    <div className="flex flex-col items-center gap-2">
+                                                                        <input
+                                                                            type="number"
+                                                                            min="1"
+                                                                            max="3"
+                                                                            value={score}
+                                                                            onChange={(e) => handleScoreChange(event.id, participant.id, e.target.value)}
+                                                                            disabled={updating}
+                                                                            className="w-14 sm:w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:opacity-50"
+                                                                            placeholder="-"
+                                                                        />
+                                                                        {medal && (
+                                                                            <div className={`flex items-center gap-1 px-2 py-1 rounded ${medal.bg}`}>
+                                                                                <FaMedal className={medal.color} size={12} />
+                                                                                <span className={`text-xs font-semibold ${medal.color}`}>
+                                                                                    {medal.type}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            );
+                                                        })}
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
 
-                        {/* Desktop View - Table */}
-                        <div className="hidden lg:block overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Event
-                                        </th>
-                                        {selectedTally.participants?.map(p => (
-                                            <th key={p.id} className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                {p.participant_name}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {selectedTally.events?.map(event => (
-                                        <tr key={event.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex items-center">
-                                                    <FaMedal className="w-4 h-4 text-gray-400 mr-2" />
-                                                    <span className="text-sm font-medium text-gray-900">{event.event_name}</span>
-                                                </div>
-                                            </td>
-                                            {selectedTally.participants?.map(participant => {
-                                                const currentScore = getScore(event.id, participant.id);
-                                                return (
-                                                    <td key={participant.id} className="px-6 py-4">
-                                                        <div className="flex flex-col items-center gap-2">
-                                                            <div className="flex gap-1">
-                                                                {getMedalButton(currentScore, 3, event.id, participant.id, 'yellow', 'Gold')}
-                                                                {getMedalButton(currentScore, 2, event.id, participant.id, 'gray', 'Silver')}
-                                                                {getMedalButton(currentScore, 1, event.id, participant.id, 'orange', 'Bronze')}
-                                                            </div>
-                                                            {currentScore > 0 && (
-                                                                <button
-                                                                    onClick={() => handleScoreUpdate(event.id, participant.id, 0)}
-                                                                    disabled={updating}
-                                                                    className="text-xs text-red-600 hover:text-red-800 hover:underline"
-                                                                >
-                                                                    Clear
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                            {updating && (
+                                <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center rounded-lg">
+                                    <div className="text-gray-600">Saving...</div>
+                                </div>
+                            )}
                         </div>
-                    </div>
-                )}
-
-                {tallies.length === 0 && (
-                    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 sm:p-12 text-center">
-                        <FaTrophy className="w-12 h-12 sm:w-16 sm:h-16 text-gray-300 mx-auto mb-4" />
-                        <p className="text-gray-500 text-sm sm:text-base">No medal tallies available</p>
-                    </div>
-                )}
-            </div>
+                    )}
+                </div>
+            )}
         </FacilitatorLayout>
     );
 }

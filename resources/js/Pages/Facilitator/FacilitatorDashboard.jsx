@@ -15,14 +15,24 @@ export default function FacilitatorDashboard() {
 
     const fetchTallies = async () => {
         try {
+            setLoading(true);
             const response = await fetch('/facilitator/medal-tallies');
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                console.error('Error response:', errorData);
+                throw new Error(errorData.message || 'Failed to fetch tallies');
+            }
+            
             const data = await response.json();
+            console.log('Tallies data:', data);
             setTallies(data);
             if (data.length > 0) {
                 setSelectedTally(data[0]);
             }
         } catch (error) {
             console.error('Error fetching tallies:', error);
+            alert('Error loading medal tallies: ' + error.message);
         } finally {
             setLoading(false);
         }

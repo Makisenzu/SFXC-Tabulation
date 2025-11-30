@@ -1,6 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
 import appLogo from '@/images/bgimage.jpg';
+import cbeStory from '@/images/CBE Story.jpg';
+import cbeML from '@/images/CBE ML.jpg';
+import ccjeStory from '@/images/CCJE Story.jpg';
+import ccjeML from '@/images/CCJE ML.jpg';
+import cteStory from '@/images/CTE Story.jpg';
+import cteML from '@/images/CTE ML.jpg';
 
 export default function Home() {
     return (
@@ -45,6 +51,195 @@ export default function Home() {
                     </div>
                 </div>
                 <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white to-transparent"></div>
+            </div>
+
+            {/* Movie Poster Section */}
+            <div className="bg-gradient-to-b from-white to-gray-50 py-16 sm:py-24">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                            Xavier Knights Story
+                        </h2>
+                        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+                            {/* Three powerful platforms, one unified system */}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                        {/* Poster 1 - CBE Story */}
+                        <Link href="/medal-tally" className="group relative overflow-hidden rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500 aspect-[2/3]">
+                            {/* Background Image */}
+                            <div className="absolute inset-0">
+                                <img
+                                    src={cbeStory}
+                                    alt="CBE Story"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                            
+                            <div className="relative h-full flex flex-col justify-between p-8">
+                                <div>
+                                    <div className="inline-block px-4 py-1 bg-yellow-400 text-yellow-900 text-xs font-bold rounded-full mb-4 uppercase tracking-wider shadow-lg">
+                                        College of Business Education
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-4xl font-black text-white mb-3 leading-tight drop-shadow-lg">
+                                        Eroplanong<br />Papel
+                                    </h3>
+                                    <p className="text-white text-sm font-medium mb-6 leading-relaxed drop-shadow-md">
+                                       A story about believing in someone who can't believe in themselves
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
+
+                                                {/* Poster 3 - CTE Story */}
+                                                <div className="group relative overflow-hidden rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500 aspect-[2/3]">
+                            {/* Background Image */}
+                            <div className="absolute inset-0">
+                                <img
+                                    src={cteStory}
+                                    alt="CTE Story"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                            
+                            <div className="relative h-full flex flex-col justify-between p-8">
+                                <div>
+                                    <div className="inline-block px-4 py-1 bg-blue-400 text-blue-900 text-xs font-bold rounded-full mb-4 uppercase tracking-wider shadow-lg">
+                                        COLLEGE OF TEACHER EDUCATION
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-4xl font-black text-white mb-3 leading-tight drop-shadow-lg">
+                                        FUTURCONY
+                                    </h3>
+                                    <p className="text-white text-sm font-medium mb-6 leading-relaxed drop-shadow-md">
+                                        Her story reminds us: learning doesn't pause when life begins.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Poster 2 - CCJE Story */}
+                        <Link href="/archives" className="group relative overflow-hidden rounded-2xl shadow-2xl transform hover:scale-105 transition-all duration-500 aspect-[2/3]">
+                            {/* Background Image */}
+                            <div className="absolute inset-0">
+                                <img
+                                    src={ccjeStory}
+                                    alt="CCJE Story"
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                            
+                            <div className="relative h-full flex flex-col justify-between p-8">
+                                <div>
+                                    <div className="inline-block px-4 py-1 bg-red-400 text-red-900 text-xs font-bold rounded-full mb-4 uppercase tracking-wider shadow-lg">
+                                        COLLEGE OF CRIMINAL JUSTICE EDUCATION
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="text-4xl font-black text-white mb-3 leading-tight drop-shadow-lg">
+                                        Event<br />Archives
+                                    </h3>
+                                    <p className="text-white text-sm font-medium mb-6 leading-relaxed drop-shadow-md">
+                                        GUIDED BY LOVE, FUELED BY COURAGE, DESTINED FOR TRIUMPH
+                                    </p>
+                                </div>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
+            </div>
+
+            {/*MLBB SECTION*/}
+            <div className="bg-gradient-to-b from-white to-gray-50 py-16 sm:py-24">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div className="text-center mb-12">
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                            Mobile Legends Bang Bang
+                        </h2>
+                        <p className="text-base sm:text-lg text-gray-600 max-w-2xl mx-auto">
+                            {/* Three powerful platforms, one unified system */}
+                        </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                        {/* Poster 1 - CBE ML */}
+                        <div className="relative aspect-[2/3] p-1 rounded-2xl bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-400 shadow-2xl shadow-yellow-500/50">
+                            <Link href="/medal-tally" className="group relative w-full h-full rounded-xl overflow-hidden block">
+                                {/* Background Image */}
+                                <div className="absolute inset-0">
+                                    <img
+                                        src={cbeML}
+                                        alt="CBE ML"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                                
+                                {/* Team Name - Bottom Center */}
+                                <div className="absolute bottom-0 left-0 right-0 p-8">
+                                    <h3 className="text-3xl sm:text-4xl font-black text-white text-center drop-shadow-2xl">
+                                        CBE
+                                    </h3>
+                                </div>
+                            </Link>
+                        </div>
+
+                        {/* Poster 3 - CTE ML */}
+                        <div className="relative aspect-[2/3] p-1 rounded-2xl bg-gradient-to-r from-blue-500 via-indigo-600 to-blue-500 shadow-2xl shadow-blue-500/50">
+                            <div className="group relative w-full h-full rounded-xl overflow-hidden">
+                                {/* Background Image */}
+                                <div className="absolute inset-0">
+                                    <img
+                                        src={cteML}
+                                        alt="CTE ML"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                                
+                                {/* Team Name - Bottom Center */}
+                                <div className="absolute bottom-0 left-0 right-0 p-8">
+                                    <h3 className="text-3xl sm:text-4xl font-black text-white text-center drop-shadow-2xl">
+                                        CTE
+                                    </h3>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Poster 2 - CCJE ML */}
+                        <div className="relative aspect-[2/3] p-1 rounded-2xl bg-gradient-to-r from-red-500 via-rose-600 to-red-500 shadow-2xl shadow-red-500/50">
+                            <Link href="/archives" className="group relative w-full h-full rounded-xl overflow-hidden block">
+                                {/* Background Image */}
+                                <div className="absolute inset-0">
+                                    <img
+                                        src={ccjeML}
+                                        alt="CCJE ML"
+                                        className="w-full h-full object-cover"
+                                    />
+                                </div>
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20 group-hover:from-black/70 transition-colors"></div>
+                                
+                                {/* Team Name - Bottom Center */}
+                                <div className="absolute bottom-0 left-0 right-0 p-8">
+                                    <h3 className="text-3xl sm:text-4xl font-black text-white text-center drop-shadow-2xl">
+                                        CCJE
+                                    </h3>
+                                </div>
+                            </Link>
+                        </div>
+
+                    </div>
+                </div>
             </div>
 
             {/* Features Section */}

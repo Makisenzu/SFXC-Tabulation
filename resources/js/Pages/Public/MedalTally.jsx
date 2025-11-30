@@ -101,11 +101,11 @@ export default function MedalTally({ tallies: initialTallies }) {
     const getRankColor = (rank) => {
         switch (rank) {
             case 1:
-                return 'bg-yellow-400 text-yellow-900'; // Gold/Yellow for 1st
+                return 'bg-yellow-400 text-yellow-900';
             case 2:
-                return 'bg-blue-400 text-blue-900'; // Blue for 2nd
+                return 'bg-blue-400 text-blue-900';
             case 3:
-                return 'bg-red-400 text-red-900'; // Red for 3rd
+                return 'bg-red-400 text-red-900';
             default:
                 return 'bg-gray-200 text-gray-700';
         }

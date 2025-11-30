@@ -147,7 +147,7 @@ export default function Home() {
                                 
                                 <div>
                                     <h3 className="text-4xl font-black text-white mb-3 leading-tight drop-shadow-lg">
-                                        Event<br />Archives
+                                        TRACES<br />OF TRIUMPH
                                     </h3>
                                     <p className="text-white text-sm font-medium mb-6 leading-relaxed drop-shadow-md">
                                         GUIDED BY LOVE, FUELED BY COURAGE, DESTINED FOR TRIUMPH

@@ -83,12 +83,12 @@ export default function PublicLayout({ children, title }) {
                             >
                                 Archives
                             </Link>
-                            <Link
+                            {/* <Link
                                 href="/login"
                                 className="block px-3 py-2 rounded-md text-base font-medium bg-blue-600 text-white hover:bg-blue-700"
                             >
                                 Staff Login
-                            </Link>
+                            </Link> */}
                         </div>
                     </div>
                 )}

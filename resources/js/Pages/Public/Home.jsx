@@ -11,7 +11,7 @@ import cteML from '@/images/CTE ML.jpg';
 export default function Home() {
     return (
         <PublicLayout>
-            <Head title="SFXC Tabulation" />
+            <Head title="SFXC Results" />
 
             {/* Hero Section */}
             <div className="relative text-white overflow-hidden">
@@ -29,7 +29,7 @@ export default function Home() {
                 <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 sm:py-32">
                     <div className="text-center">
                         <h1 className="text-5xl sm:text-6xl md:text-7xl font-extrabold mb-6 leading-tight">
-                            SFXC Tabulation
+                            SFXC Results
                         </h1>
                         <p className="text-lg sm:text-xl md:text-2xl mb-10 text-blue-100 font-medium max-w-3xl mx-auto leading-relaxed">
                             Results and comprehensive event archives for all St Francis Xavier College competitions

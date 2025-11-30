@@ -98,6 +98,19 @@ export default function MedalTally({ tallies: initialTallies }) {
         });
     };
 
+    const getRankColor = (rank) => {
+        switch (rank) {
+            case 1:
+                return 'bg-yellow-400 text-yellow-900'; // Gold/Yellow for 1st
+            case 2:
+                return 'bg-blue-400 text-blue-900'; // Blue for 2nd
+            case 3:
+                return 'bg-red-400 text-red-900'; // Red for 3rd
+            default:
+                return 'bg-gray-200 text-gray-700';
+        }
+    };
+
     const getParticipantColor = (participantName) => {
         const name = participantName.toUpperCase();
         if (name.includes('CBE')) {
@@ -113,7 +126,7 @@ export default function MedalTally({ tallies: initialTallies }) {
     return (
         <PublicLayout>
             <Head title="Medal Tally" />
-
+            
             <div className="min-h-screen bg-gray-50 py-8">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-8 gap-4">
@@ -158,9 +171,7 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                     const counts = calculateMedalCounts(participant.id);
                                                     const rank = index + 1;
                                                     return (
-                                                        <div key={participant.id} 
-                                                             className={`rounded-lg p-5 border border-transparent ${getParticipantColor(participant.participant_name)}`}>
-
+                                                        <div key={participant.id} className={`rounded-lg p-5 border border-transparent ${getParticipantColor(participant.participant_name)}`}>
                                                             <div className="flex items-center justify-between mb-4">
                                                                 <h4 className="font-semibold text-gray-900">{participant.participant_name}</h4>
                                                                 {counts.total > 0 && (
@@ -169,7 +180,6 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                     </span>
                                                                 )}
                                                             </div>
-
                                                             <div className="space-y-3">
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
@@ -181,7 +191,6 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                     </div>
                                                                     <span className="text-lg font-semibold text-gray-900">{counts.gold}</span>
                                                                 </div>
-
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
                                                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -192,7 +201,6 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                     </div>
                                                                     <span className="text-lg font-semibold text-gray-900">{counts.silver}</span>
                                                                 </div>
-
                                                                 <div className="flex items-center justify-between">
                                                                     <div className="flex items-center gap-2">
                                                                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -203,7 +211,6 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                     </div>
                                                                     <span className="text-lg font-semibold text-gray-900">{counts.bronze}</span>
                                                                 </div>
-
                                                                 <div className="pt-3 mt-3 border-t border-gray-200">
                                                                     <div className="flex items-center justify-between">
                                                                         <span className="text-sm font-medium text-gray-900">Total</span>
@@ -211,7 +218,6 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                     </div>
                                                                 </div>
                                                             </div>
-
                                                         </div>
                                                     );
                                                 })}

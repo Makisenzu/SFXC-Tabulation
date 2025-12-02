@@ -195,7 +195,10 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getMedalTally/{id}', [MedalController::class, 'getMedalTally']);
     Route::post('/createMedalTally', [MedalController::class, 'createMedalTally']);
     Route::post('/updateMedalScore', [MedalController::class, 'updateScore']);
+    Route::delete('/deleteMedalScore/{id}', [MedalController::class, 'deleteScore']);
     Route::delete('/deleteMedalTally/{id}', [MedalController::class, 'deleteMedalTally']);
+    Route::get('/printFullMedalTally/{id}', [MedalController::class, 'printFullTally']);
+    Route::get('/printCueCards/{id}', [MedalController::class, 'printCueCards']);
 
     
     //sync

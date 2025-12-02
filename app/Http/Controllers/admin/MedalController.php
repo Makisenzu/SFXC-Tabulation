@@ -75,22 +75,29 @@ class MedalController extends Controller
             'medal_tally_id' => 'required|exists:medal_tallies,id',
             'event_id' => 'required|exists:events,id',
             'participant_id' => 'required|exists:medal_tally_participants,id',
-            'score' => 'required|integer|min:1|max:3'
+            'score' => 'required|integer|min:1|max:3',
+            'score_id' => 'nullable|exists:medal_scores,id'
         ]);
 
         $medalType = $this->convertScoreToMedal($validated['score']);
 
-        $score = MedalScore::updateOrCreate(
-            [
-                'medal_tally_id' => $validated['medal_tally_id'],
-                'event_id' => $validated['event_id'],
-                'participant_id' => $validated['participant_id']
-            ],
-            [
+        if ($validated['score_id']) {
+            // Update existing score
+            $score = MedalScore::findOrFail($validated['score_id']);
+            $score->update([
                 'score' => $validated['score'],
                 'medal_type' => $medalType
-            ]
-        );
+            ]);
+        } else {
+            // Create new score
+            $score = MedalScore::create([
+                'medal_tally_id' => $validated['medal_tally_id'],
+                'event_id' => $validated['event_id'],
+                'participant_id' => $validated['participant_id'],
+                'score' => $validated['score'],
+                'medal_type' => $medalType
+            ]);
+        }
 
         broadcast(new MedalTallyUpdated($validated['medal_tally_id']));
 
@@ -101,6 +108,19 @@ class MedalController extends Controller
         ]);
     }
 
+    public function deleteScore($id)
+    {
+        $score = MedalScore::findOrFail($id);
+        $medalTallyId = $score->medal_tally_id;
+        $score->delete();
+        
+        broadcast(new MedalTallyUpdated($medalTallyId));
+        
+        return response()->json([
+            'message' => 'Score deleted successfully'
+        ]);
+    }
+
     public function deleteMedalTally($id)
     {
         $tally = MedalTally::findOrFail($id);
@@ -108,6 +128,26 @@ class MedalController extends Controller
         
         return response()->json([
             'message' => 'Medal Tally deleted successfully'
+        ]);
+    }
+
+    public function printFullTally($id)
+    {
+        $tally = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->findOrFail($id);
+        
+        return inertia('Admin/PrintFullMedalTally', [
+            'tally' => $tally
+        ]);
+    }
+
+    public function printCueCards($id)
+    {
+        $tally = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->findOrFail($id);
+        
+        return inertia('Admin/PrintCueCards', [
+            'tally' => $tally
         ]);
     }
 

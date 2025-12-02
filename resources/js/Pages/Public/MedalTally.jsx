@@ -253,10 +253,20 @@ export default function MedalTally({ tallies: initialTallies }) {
                                                                 {event.event_name}
                                                             </td>
                                                             {selectedTally.participants.map(p => {
-                                                                const score = selectedTally.scores.find(s => s.event_id === event.id && s.participant_id === p.id);
+                                                                const participantMedals = selectedTally.scores.filter(s => s.event_id === event.id && s.participant_id === p.id);
                                                                 return (
                                                                     <td key={p.id} className="px-6 py-4 text-center">
-                                                                        {getMedalIcon(score?.score)}
+                                                                        {participantMedals.length > 0 ? (
+                                                                            <div className="flex flex-wrap justify-center gap-2">
+                                                                                {participantMedals.map((medal, idx) => (
+                                                                                    <div key={idx}>
+                                                                                        {getMedalIcon(medal.score)}
+                                                                                    </div>
+                                                                                ))}
+                                                                            </div>
+                                                                        ) : (
+                                                                            <span className="text-sm text-gray-400">-</span>
+                                                                        )}
                                                                     </td>
                                                                 );
                                                             })}

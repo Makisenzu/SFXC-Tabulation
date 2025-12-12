@@ -109,6 +109,7 @@ class SyncController extends Controller
             'actives' => Active::all()->toArray(),
             'assigns' => Assign::all()->toArray(),
             'medal_tallies' => MedalTally::all()->toArray(),
+            'result_archives' => ResultArchive::all()->toArray(),
             
             // LEVEL 3: Tables depending on Level 2
             'criteria' => Criteria::all()->toArray(),
@@ -168,6 +169,9 @@ class SyncController extends Controller
             
             // Sync Medal Tallies
             $stats['medal_tallies'] = $this->syncTable($data['medal_tallies'] ?? [], MedalTally::class, 'medal_tallies');
+
+            // Sync Result Archives (depends on events)
+            $stats['result_archives'] = $this->syncTable($data['result_archives'] ?? [], ResultArchive::class, 'result_archives');
 
             // ========================================
             // LEVEL 3: Tables Depending on Level 2
@@ -238,6 +242,22 @@ class SyncController extends Controller
                             'existing_id' => $existingEvent->id,
                             'is_archived' => $record['is_archived'] ?? 0
                         ]);
+                        $synced++;
+                        continue;
+                    }
+                }
+
+                // Special handling for result_archives to link to correct event
+                if ($tableName === 'result_archives') {
+                    // The event_id needs to match the online system's event ID
+                    // We need to find the event by looking it up from the already synced events
+                    
+                    // Check if archive already exists for this event_id (after events have been synced)
+                    $existingArchive = $modelClass::where('event_id', $record['event_id'])->first();
+                    
+                    if ($existingArchive) {
+                        $existingArchive->update($record);
+                        Log::info("Updated existing result archive", ['event_id' => $record['event_id']]);
                         $synced++;
                         continue;
                     }

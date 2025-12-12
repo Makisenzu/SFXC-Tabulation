@@ -56,6 +56,7 @@ class PublicController extends Controller
     public function archiveDetails($eventId)
     {
         $event = Event::where('is_archived', 1)
+            ->with('medalTallies')
             ->findOrFail($eventId);
 
         $archive = ResultArchive::where('event_id', $eventId)
@@ -69,12 +70,17 @@ class PublicController extends Controller
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);
 
+        // Get medal tally information
+        $medalTally = $event->medalTallies->first();
+        $medalTallyName = $medalTally ? $medalTally->tally_title : null;
+
         return inertia('Public/ArchiveDetails', [
             'event' => $event,
             'archiveData' => $finalResults,
             'rankings' => $rankings,
             'archivedAt' => $archive->archived_at,
-            'notes' => $archive->notes
+            'notes' => $archive->notes,
+            'medalTallyName' => $medalTallyName
         ]);
     }
 

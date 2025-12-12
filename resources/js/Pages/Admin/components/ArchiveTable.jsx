@@ -31,7 +31,13 @@ export default function ArchiveTable() {
             setShowViewModal(true);
         } catch (error) {
             console.error('Error fetching archive details:', error);
-            alert('Failed to load archive details');
+            
+            // Show more detailed error message
+            const errorMessage = error.response?.data?.message || 
+                                error.response?.data?.error || 
+                                'Failed to load archive details';
+            
+            alert(errorMessage + '\n\nEvent: ' + event.event_name);
         }
     };
 

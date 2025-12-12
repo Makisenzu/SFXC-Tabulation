@@ -127,53 +127,66 @@ class ArchiveController extends Controller
 
     public function getArchivedEventDetails($eventId)
     {
-        // Get the event first
-        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
-            ->findOrFail($eventId);
+        try {
+            // Get the event first
+            $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
+                ->findOrFail($eventId);
 
-        // Check if result archive exists for this event
-        $archive = ResultArchive::where('event_id', $eventId)
-            ->latest()
-            ->first();
+            // Check if result archive exists for this event
+            $archive = ResultArchive::where('event_id', $eventId)
+                ->latest()
+                ->first();
 
-        if (!$archive) {
-            // No archive data - calculate rankings from tabulations table
-            Log::info("No archive data found, calculating from tabulations", ['event_id' => $eventId]);
-            
-            $rankings = $this->calculateRankingsFromTabulations($event);
-            $finalResults = $this->buildResultsFromTabulations($event);
-            
+            if (!$archive) {
+                // No archive data - calculate rankings from tabulations table
+                Log::info("No archive data found, calculating from tabulations", ['event_id' => $eventId]);
+                
+                $rankings = $this->calculateRankingsFromTabulations($event);
+                $finalResults = $this->buildResultsFromTabulations($event);
+                
+                // Get medal tally information
+                $medalTally = $event->medalTallies->first();
+                $medalTallyName = $medalTally ? $medalTally->tally_title : null;
+                
+                return response()->json([
+                    'event' => $event,
+                    'archive_data' => $finalResults,
+                    'rankings' => $rankings,
+                    'archived_at' => $event->updated_at,
+                    'notes' => null,
+                    'medal_tally_name' => $medalTallyName,
+                    'calculated_on_fly' => true
+                ]);
+            }
+
+            $finalResults = json_decode($archive->final_results, true);
+            $rankings = json_decode($archive->contestant_rankings, true);
+
             // Get medal tally information
             $medalTally = $event->medalTallies->first();
             $medalTallyName = $medalTally ? $medalTally->tally_title : null;
-            
+
             return response()->json([
                 'event' => $event,
                 'archive_data' => $finalResults,
                 'rankings' => $rankings,
-                'archived_at' => $event->updated_at,
-                'notes' => null,
+                'archived_at' => $archive->archived_at,
+                'notes' => $archive->notes,
                 'medal_tally_name' => $medalTallyName,
-                'calculated_on_fly' => true
+                'calculated_on_fly' => false
             ]);
+        } catch (\Exception $e) {
+            Log::error("Error in getArchivedEventDetails", [
+                'event_id' => $eventId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return response()->json([
+                'error' => 'Failed to load archive details',
+                'message' => $e->getMessage()
+            ], 500);
         }
-
-        $finalResults = json_decode($archive->final_results, true);
-        $rankings = json_decode($archive->contestant_rankings, true);
-
-        // Get medal tally information
-        $medalTally = $event->medalTallies->first();
-        $medalTallyName = $medalTally ? $medalTally->tally_title : null;
-
-        return response()->json([
-            'event' => $event,
-            'archive_data' => $finalResults,
-            'rankings' => $rankings,
-            'archived_at' => $archive->archived_at,
-            'notes' => $archive->notes,
-            'medal_tally_name' => $medalTallyName,
-            'calculated_on_fly' => false
-        ]);
     }
 
     public function unarchiveEvent($eventId)
@@ -264,9 +277,11 @@ class ArchiveController extends Controller
 
             foreach ($rounds as $round) {
                 foreach ($round->tabulations as $tabulation) {
-                    $percentageScore = ($tabulation->score / $tabulation->criteria->max_percentage) * $tabulation->criteria->percentage;
-                    $totalScore += $percentageScore;
-                    $scoreCount++;
+                    if ($tabulation->criteria && $tabulation->criteria->max_percentage > 0) {
+                        $percentageScore = ($tabulation->score / $tabulation->criteria->max_percentage) * $tabulation->criteria->percentage;
+                        $totalScore += $percentageScore;
+                        $scoreCount++;
+                    }
                 }
             }
 

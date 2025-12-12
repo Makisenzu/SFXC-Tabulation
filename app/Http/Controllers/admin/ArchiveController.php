@@ -12,6 +12,7 @@ use App\Models\Criteria;
 use App\Models\Active;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ArchiveController extends Controller
 {
@@ -138,6 +139,14 @@ class ArchiveController extends Controller
                 ->first();
 
             if (!$archive) {
+                // Check if methods exist (for debugging deployment issues)
+                if (!method_exists($this, 'calculateRankingsFromTabulations')) {
+                    return response()->json([
+                        'error' => 'Code not updated',
+                        'message' => 'The online server code needs to be updated. Please redeploy the latest changes.'
+                    ], 500);
+                }
+                
                 // No archive data - calculate rankings from tabulations table
                 Log::info("No archive data found, calculating from tabulations", ['event_id' => $eventId]);
                 
@@ -184,7 +193,9 @@ class ArchiveController extends Controller
             
             return response()->json([
                 'error' => 'Failed to load archive details',
-                'message' => $e->getMessage()
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
             ], 500);
         }
     }

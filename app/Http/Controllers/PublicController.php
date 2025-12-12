@@ -42,10 +42,15 @@ class PublicController extends Controller
 
     public function archives()
     {
-        // Get all events that have result archives (regardless of is_archived status)
-        $archivedEventIds = ResultArchive::pluck('event_id')->unique();
+        // Get events that are either:
+        // 1. Marked as archived (is_archived = 1), OR
+        // 2. Have result archive data (from sync)
+        $archivedEventIds = ResultArchive::pluck('event_id')->unique()->toArray();
         
-        $archivedEvents = Event::whereIn('id', $archivedEventIds)
+        $archivedEvents = Event::where(function($query) use ($archivedEventIds) {
+                $query->where('is_archived', 1)
+                      ->orWhereIn('id', $archivedEventIds);
+            })
             ->with('contestants')
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -57,17 +62,17 @@ class PublicController extends Controller
 
     public function archiveDetails($eventId)
     {
-        // First, check if result archive exists for this event
+        // Get the event first
+        $event = Event::with('medalTallies')->findOrFail($eventId);
+
+        // Check if result archive exists for this event
         $archive = ResultArchive::where('event_id', $eventId)
             ->latest()
             ->first();
 
         if (!$archive) {
-            abort(404, 'Archive data not found for this event');
+            abort(404, 'Archive data not found for this event. Results may not have been generated yet.');
         }
-
-        // Get the event (don't check is_archived since event might be active for medal tally)
-        $event = Event::with('medalTallies')->findOrFail($eventId);
 
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);

@@ -17,12 +17,16 @@ class ArchiveController extends Controller
 {
     public function getArchivedEvents()
     {
-        // Get all events that have result archives (regardless of is_archived status)
-        // This handles events that are active for medal tally but have archived scoring data
-        $archivedEventIds = ResultArchive::pluck('event_id')->unique();
+        // Get events that are either:
+        // 1. Marked as archived (is_archived = 1), OR
+        // 2. Have result archive data (from sync)
+        $archivedEventIds = ResultArchive::pluck('event_id')->unique()->toArray();
         
         $archivedEvents = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
-            ->whereIn('id', $archivedEventIds)
+            ->where(function($query) use ($archivedEventIds) {
+                $query->where('is_archived', 1)
+                      ->orWhereIn('id', $archivedEventIds);
+            })
             ->orderBy('updated_at', 'desc')
             ->get();
         
@@ -31,8 +35,9 @@ class ArchiveController extends Controller
             $medalTally = $event->medalTallies->first();
             $event->medal_tally_name = $medalTally ? $medalTally->tally_title : null;
             
-            // Add a flag to indicate if event is truly archived or just has archive data
-            $event->has_archive_data = true;
+            // Check if this event has archive data
+            $hasArchiveData = ResultArchive::where('event_id', $event->id)->exists();
+            $event->has_archive_data = $hasArchiveData;
             $event->is_medal_tally_event = $medalTally !== null;
             
             return $event;
@@ -122,18 +127,23 @@ class ArchiveController extends Controller
 
     public function getArchivedEventDetails($eventId)
     {
-        // First, check if result archive exists for this event
+        // Get the event first
+        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
+            ->findOrFail($eventId);
+
+        // Check if result archive exists for this event
         $archive = ResultArchive::where('event_id', $eventId)
             ->latest()
             ->first();
 
         if (!$archive) {
-            return response()->json(['error' => 'Archive data not found for this event'], 404);
+            // No archive data - event might be archived but not yet processed
+            return response()->json([
+                'error' => 'Archive data not found for this event',
+                'message' => 'This event is marked as archived but detailed results have not been generated yet.',
+                'event_name' => $event->event_name
+            ], 404);
         }
-
-        // Get the event (don't check is_archived since event might be active for medal tally)
-        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
-            ->findOrFail($eventId);
 
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);

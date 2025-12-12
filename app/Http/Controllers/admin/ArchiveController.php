@@ -137,12 +137,25 @@ class ArchiveController extends Controller
             ->first();
 
         if (!$archive) {
-            // No archive data - event might be archived but not yet processed
+            // No archive data - calculate rankings from tabulations table
+            Log::info("No archive data found, calculating from tabulations", ['event_id' => $eventId]);
+            
+            $rankings = $this->calculateRankingsFromTabulations($event);
+            $finalResults = $this->buildResultsFromTabulations($event);
+            
+            // Get medal tally information
+            $medalTally = $event->medalTallies->first();
+            $medalTallyName = $medalTally ? $medalTally->tally_title : null;
+            
             return response()->json([
-                'error' => 'Archive data not found for this event',
-                'message' => 'This event is marked as archived but detailed results have not been generated yet.',
-                'event_name' => $event->event_name
-            ], 404);
+                'event' => $event,
+                'archive_data' => $finalResults,
+                'rankings' => $rankings,
+                'archived_at' => $event->updated_at,
+                'notes' => null,
+                'medal_tally_name' => $medalTallyName,
+                'calculated_on_fly' => true
+            ]);
         }
 
         $finalResults = json_decode($archive->final_results, true);
@@ -158,7 +171,8 @@ class ArchiveController extends Controller
             'rankings' => $rankings,
             'archived_at' => $archive->archived_at,
             'notes' => $archive->notes,
-            'medal_tally_name' => $medalTallyName
+            'medal_tally_name' => $medalTallyName,
+            'calculated_on_fly' => false
         ]);
     }
 
@@ -185,6 +199,55 @@ class ArchiveController extends Controller
                 'error' => 'Failed to unarchive event'
             ], 500);
         }
+    }
+
+    private function calculateRankingsFromTabulations($event)
+    {
+        // Use the existing calculateFinalRankings method
+        return $this->calculateFinalRankings($event);
+    }
+
+    private function buildResultsFromTabulations($event)
+    {
+        $results = [
+            'contestants' => []
+        ];
+
+        foreach ($event->contestants as $contestant) {
+            $contestantData = [
+                'id' => $contestant->id,
+                'name' => $contestant->contestant_name,
+                'sequence_no' => $contestant->sequence_no,
+                'photo' => $contestant->photo,
+                'rounds' => []
+            ];
+
+            $rounds = Round::where('contestant_id', $contestant->id)
+                ->with(['active', 'tabulations.criteria', 'tabulations.user'])
+                ->get();
+
+            foreach ($rounds as $round) {
+                $roundData = [
+                    'round_no' => $round->active->round_no ?? 'N/A',
+                    'scores' => []
+                ];
+
+                foreach ($round->tabulations as $tabulation) {
+                    $roundData['scores'][] = [
+                        'criteria' => $tabulation->criteria->criteria_desc ?? 'N/A',
+                        'judge' => $tabulation->user->username ?? 'N/A',
+                        'score' => $tabulation->score,
+                        'percentage' => $tabulation->criteria->percentage ?? 0
+                    ];
+                }
+
+                $contestantData['rounds'][] = $roundData;
+            }
+
+            $results['contestants'][] = $contestantData;
+        }
+
+        return $results;
     }
 
     private function calculateFinalRankings($event)

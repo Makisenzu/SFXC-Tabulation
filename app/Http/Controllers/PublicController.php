@@ -42,8 +42,10 @@ class PublicController extends Controller
 
     public function archives()
     {
-        // Get all archived events
-        $archivedEvents = Event::where('is_archived', 1)
+        // Get all events that have result archives (regardless of is_archived status)
+        $archivedEventIds = ResultArchive::pluck('event_id')->unique();
+        
+        $archivedEvents = Event::whereIn('id', $archivedEventIds)
             ->with('contestants')
             ->orderBy('updated_at', 'desc')
             ->get();
@@ -55,17 +57,17 @@ class PublicController extends Controller
 
     public function archiveDetails($eventId)
     {
-        $event = Event::where('is_archived', 1)
-            ->with('medalTallies')
-            ->findOrFail($eventId);
-
+        // First, check if result archive exists for this event
         $archive = ResultArchive::where('event_id', $eventId)
             ->latest()
             ->first();
 
         if (!$archive) {
-            abort(404, 'Archive data not found');
+            abort(404, 'Archive data not found for this event');
         }
+
+        // Get the event (don't check is_archived since event might be active for medal tally)
+        $event = Event::with('medalTallies')->findOrFail($eventId);
 
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);

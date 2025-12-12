@@ -17,15 +17,24 @@ class ArchiveController extends Controller
 {
     public function getArchivedEvents()
     {
+        // Get all events that have result archives (regardless of is_archived status)
+        // This handles events that are active for medal tally but have archived scoring data
+        $archivedEventIds = ResultArchive::pluck('event_id')->unique();
+        
         $archivedEvents = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
-            ->where('is_archived', 1)
+            ->whereIn('id', $archivedEventIds)
             ->orderBy('updated_at', 'desc')
             ->get();
         
-        // Add medal tally information to each event
+        // Add medal tally information and archive status to each event
         $archivedEvents->transform(function ($event) {
             $medalTally = $event->medalTallies->first();
             $event->medal_tally_name = $medalTally ? $medalTally->tally_title : null;
+            
+            // Add a flag to indicate if event is truly archived or just has archive data
+            $event->has_archive_data = true;
+            $event->is_medal_tally_event = $medalTally !== null;
+            
             return $event;
         });
         
@@ -113,17 +122,18 @@ class ArchiveController extends Controller
 
     public function getArchivedEventDetails($eventId)
     {
-        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
-            ->where('is_archived', 1)
-            ->findOrFail($eventId);
-
+        // First, check if result archive exists for this event
         $archive = ResultArchive::where('event_id', $eventId)
             ->latest()
             ->first();
 
         if (!$archive) {
-            return response()->json(['error' => 'Archive data not found'], 404);
+            return response()->json(['error' => 'Archive data not found for this event'], 404);
         }
+
+        // Get the event (don't check is_archived since event might be active for medal tally)
+        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
+            ->findOrFail($eventId);
 
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);

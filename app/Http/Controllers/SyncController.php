@@ -13,6 +13,7 @@ use App\Models\MedalScore;
 use App\Models\MedalTally;
 use App\Models\Tabulation;
 use Illuminate\Http\Request;
+use App\Models\ResultArchive;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;

@@ -98,6 +98,15 @@ class SyncController extends Controller
     {
         // Data organized in correct foreign key dependency order
         // Following DATABASE_IMPORT_SEQUENCE.md
+        
+        // Prepare result archives with event names for proper mapping on online system
+        $resultArchives = ResultArchive::all()->map(function ($archive) {
+            $archiveArray = $archive->toArray();
+            $event = Event::find($archive->event_id);
+            $archiveArray['_event_name'] = $event ? $event->event_name : null;
+            return $archiveArray;
+        })->toArray();
+        
         return [
             // LEVEL 1: Base tables (no dependencies)
             'roles' => \App\Models\Role::all()->toArray(),
@@ -109,7 +118,7 @@ class SyncController extends Controller
             'actives' => Active::all()->toArray(),
             'assigns' => Assign::all()->toArray(),
             'medal_tallies' => MedalTally::all()->toArray(),
-            'result_archives' => ResultArchive::all()->toArray(),
+            'result_archives' => $resultArchives,
             
             // LEVEL 3: Tables depending on Level 2
             'criteria' => Criteria::all()->toArray(),
@@ -249,17 +258,33 @@ class SyncController extends Controller
 
                 // Special handling for result_archives to link to correct event
                 if ($tableName === 'result_archives') {
-                    // The event_id needs to match the online system's event ID
-                    // We need to find the event by looking it up from the already synced events
-                    
-                    // Check if archive already exists for this event_id (after events have been synced)
-                    $existingArchive = $modelClass::where('event_id', $record['event_id'])->first();
-                    
-                    if ($existingArchive) {
-                        $existingArchive->update($record);
-                        Log::info("Updated existing result archive", ['event_id' => $record['event_id']]);
-                        $synced++;
-                        continue;
+                    // Find the event by name on the online system (event was synced already)
+                    if (isset($record['_event_name'])) {
+                        $event = Event::where('event_name', $record['_event_name'])->first();
+                        
+                        if ($event) {
+                            // Update event_id to match online system's event ID
+                            $record['event_id'] = $event->id;
+                            unset($record['_event_name']); // Remove helper field
+                            
+                            // Check if archive already exists for this event
+                            $existingArchive = $modelClass::where('event_id', $event->id)->first();
+                            
+                            if ($existingArchive) {
+                                $existingArchive->update($record);
+                                Log::info("Updated existing result archive", [
+                                    'event_name' => $event->event_name,
+                                    'event_id' => $event->id
+                                ]);
+                                $synced++;
+                                continue;
+                            }
+                        } else {
+                            Log::warning("Skipping result archive - event not found", [
+                                'event_name' => $record['_event_name']
+                            ]);
+                            continue;
+                        }
                     }
                 }
                 

@@ -35,4 +35,8 @@ class Event extends Model
     public function assigns(){
         return $this->hasMany(Assign::class);
     }
+
+    public function medalTallies() {
+        return $this->belongsToMany(MedalTally::class, 'medal_tally_events');
+    }
 }

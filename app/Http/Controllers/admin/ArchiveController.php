@@ -17,10 +17,17 @@ class ArchiveController extends Controller
 {
     public function getArchivedEvents()
     {
-        $archivedEvents = Event::with(['contestants', 'criterias', 'actives'])
+        $archivedEvents = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
             ->where('is_archived', 1)
             ->orderBy('updated_at', 'desc')
             ->get();
+        
+        // Add medal tally information to each event
+        $archivedEvents->transform(function ($event) {
+            $medalTally = $event->medalTallies->first();
+            $event->medal_tally_name = $medalTally ? $medalTally->tally_title : null;
+            return $event;
+        });
         
         return response()->json($archivedEvents);
     }
@@ -106,7 +113,7 @@ class ArchiveController extends Controller
 
     public function getArchivedEventDetails($eventId)
     {
-        $event = Event::with(['contestants', 'criterias', 'actives'])
+        $event = Event::with(['contestants', 'criterias', 'actives', 'medalTallies'])
             ->where('is_archived', 1)
             ->findOrFail($eventId);
 
@@ -121,12 +128,17 @@ class ArchiveController extends Controller
         $finalResults = json_decode($archive->final_results, true);
         $rankings = json_decode($archive->contestant_rankings, true);
 
+        // Get medal tally information
+        $medalTally = $event->medalTallies->first();
+        $medalTallyName = $medalTally ? $medalTally->tally_title : null;
+
         return response()->json([
             'event' => $event,
             'archive_data' => $finalResults,
             'rankings' => $rankings,
             'archived_at' => $archive->archived_at,
-            'notes' => $archive->notes
+            'notes' => $archive->notes,
+            'medal_tally_name' => $medalTallyName
         ]);
     }
 

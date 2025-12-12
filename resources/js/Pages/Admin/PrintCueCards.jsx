@@ -172,7 +172,7 @@ export default function PrintCueCards({ tally }) {
                             </div>
 
                             {/* Summary Section */}
-                            <div className="border-t-4 border-gray-800 pt-6">
+                            {/* <div className="border-t-4 border-gray-800 pt-6">
                                 <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
                                     OVERALL MEDAL SUMMARY
                                 </h2>
@@ -211,7 +211,7 @@ export default function PrintCueCards({ tally }) {
                                         );
                                     })}
                                 </div>
-                            </div>
+                            </div> */}
 
                             {/* Card Footer */}
                             <div className="mt-6 pt-4 border-t border-gray-300 text-center text-sm text-gray-500">

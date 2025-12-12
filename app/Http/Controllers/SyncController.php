@@ -223,6 +223,26 @@ class SyncController extends Controller
         $synced = 0;
         foreach ($records as $record) {
             try {
+                // Special handling for events to check by name only
+                if ($tableName === 'events') {
+                    // Check if event already exists by name only
+                    $existingEvent = $modelClass::where('event_name', $record['event_name'])->first();
+                    
+                    if ($existingEvent) {
+                        // Update existing event with data from local version
+                        // This merges the local event data (with scores) into the online event (medal tally placeholder)
+                        $existingEvent->update($record);
+                        
+                        Log::info("Updated existing event with local data", [
+                            'event_name' => $record['event_name'],
+                            'existing_id' => $existingEvent->id,
+                            'is_archived' => $record['is_archived'] ?? 0
+                        ]);
+                        $synced++;
+                        continue;
+                    }
+                }
+                
                 $modelClass::updateOrCreate(
                     ['id' => $record['id']],
                     $record

@@ -3,6 +3,9 @@ import { FaTimes, FaTrophy, FaMedal } from 'react-icons/fa';
 
 export default function ViewArchiveModal({ archiveData, onClose }) {
     const [selectedTab, setSelectedTab] = useState('rankings');
+    const isOnlineVersion = window.location.hostname.includes('sfxcresults.online') || 
+                           window.location.hostname.includes('herokuapp') ||
+                           !window.location.hostname.includes('localhost');
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {
@@ -24,6 +27,9 @@ export default function ViewArchiveModal({ archiveData, onClose }) {
         return badges[rank] || { color: 'bg-blue-100 text-blue-800 border-blue-300', icon: '🏅', label: `${rank}th Place` };
     };
 
+    // For online version, only show top 3 winners
+    const displayRankings = isOnlineVersion ? archiveData.rankings.slice(0, 3) : archiveData.rankings;
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overflow-y-auto">
             <div className="bg-white rounded-lg w-full max-w-6xl my-8">
@@ -33,6 +39,14 @@ export default function ViewArchiveModal({ archiveData, onClose }) {
                         <h3 className="text-2xl font-bold text-gray-900">{archiveData.event.event_name}</h3>
                         <div className="mt-2 space-y-1 text-sm text-gray-600">
                             <p><strong>Type:</strong> {archiveData.event.event_type}</p>
+                            {archiveData.medal_tally_name && (
+                                <p>
+                                    <strong>Medal Tally:</strong> 
+                                    <span className="ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">
+                                        {archiveData.medal_tally_name}
+                                    </span>
+                                </p>
+                            )}
                             <p><strong>Description:</strong> {archiveData.event.description}</p>
                             <p><strong>Event Period:</strong> {new Date(archiveData.event.event_start).toLocaleDateString()} - {new Date(archiveData.event.event_end).toLocaleDateString()}</p>
                             <p><strong>Archived:</strong> {formatDate(archiveData.archived_at)}</p>
@@ -84,9 +98,11 @@ export default function ViewArchiveModal({ archiveData, onClose }) {
                 <div className="p-6 max-h-[60vh] overflow-y-auto">
                     {selectedTab === 'rankings' && (
                         <div>
-                            <h4 className="text-lg font-semibold mb-4">Final Rankings</h4>
+                            <h4 className="text-lg font-semibold mb-4">
+                                {isOnlineVersion ? 'Winners (Top 3)' : 'Final Rankings'}
+                            </h4>
                             <div className="space-y-3">
-                                {archiveData.rankings.map((ranking) => {
+                                {displayRankings.map((ranking) => {
                                     const badge = getRankBadge(ranking.rank);
                                     return (
                                         <div key={ranking.contestant_id} className={`p-4 rounded-lg border-2 ${badge.color}`}>
@@ -98,10 +114,12 @@ export default function ViewArchiveModal({ archiveData, onClose }) {
                                                         <p className="text-sm opacity-75">{badge.label}</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold">{ranking.total_score}</div>
-                                                    <div className="text-sm opacity-75">Total Score</div>
-                                                </div>
+                                                {!isOnlineVersion && (
+                                                    <div className="text-right">
+                                                        <div className="text-2xl font-bold">{ranking.total_score}</div>
+                                                        <div className="text-sm opacity-75">Total Score</div>
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     );

@@ -2,12 +2,25 @@ import { Head, Link } from '@inertiajs/react';
 import PublicLayout from '@/Layouts/PublicLayout';
 
 export default function ArchiveDetails({ event, rankings, archivedAt }) {
+    const isOnlineVersion = window.location.hostname.includes('sfxcresults.online') || 
+                           window.location.hostname.includes('herokuapp') ||
+                           !window.location.hostname.includes('localhost');
+    
     const getRankColor = (rank) => {
         switch (rank) {
             case 1: return 'bg-yellow-500 text-white';
             case 2: return 'bg-gray-400 text-white';
             case 3: return 'bg-orange-600 text-white';
             default: return 'bg-gray-200 text-gray-700';
+        }
+    };
+
+    const getMedalEmoji = (rank) => {
+        switch (rank) {
+            case 1: return '🥇';
+            case 2: return '🥈';
+            case 3: return '🥉';
+            default: return '';
         }
     };
 
@@ -20,6 +33,9 @@ export default function ArchiveDetails({ event, rankings, archivedAt }) {
             minute: '2-digit'
         });
     };
+
+    // For online version, only show top 3 winners
+    const displayRankings = isOnlineVersion ? rankings.slice(0, 3) : rankings;
 
     return (
         <PublicLayout>
@@ -41,13 +57,15 @@ export default function ArchiveDetails({ event, rankings, archivedAt }) {
                     </div>
 
                     <div className="bg-white rounded-lg shadow p-6">
-                        <h2 className="text-2xl font-bold text-gray-900 mb-6">Final Results</h2>
+                        <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                            {isOnlineVersion ? 'Winners' : 'Final Results'}
+                        </h2>
                         
                         <div className="space-y-4">
-                            {rankings.map((ranking) => (
+                            {displayRankings.map((ranking) => (
                                 <div key={ranking.contestant_id} className="flex items-center gap-4 p-4 rounded-lg border-2 border-gray-200">
                                     <div className={`w-12 h-12 rounded-full ${getRankColor(ranking.rank)} flex items-center justify-center text-xl font-bold`}>
-                                        {ranking.rank}
+                                        {isOnlineVersion ? getMedalEmoji(ranking.rank) : ranking.rank}
                                     </div>
                                     <div className="flex-1">
                                         <h3 className="text-lg font-bold text-gray-900">{ranking.contestant_name}</h3>
@@ -55,10 +73,12 @@ export default function ArchiveDetails({ event, rankings, archivedAt }) {
                                             {ranking.rank === 1 ? '1st Place' : ranking.rank === 2 ? '2nd Place' : ranking.rank === 3 ? '3rd Place' : `${ranking.rank}th Place`}
                                         </p>
                                     </div>
-                                    <div className="text-right">
-                                        <div className="text-2xl font-bold text-gray-900">{ranking.total_score}</div>
-                                        <div className="text-sm text-gray-500">Total Score</div>
-                                    </div>
+                                    {!isOnlineVersion && (
+                                        <div className="text-right">
+                                            <div className="text-2xl font-bold text-gray-900">{ranking.total_score}</div>
+                                            <div className="text-sm text-gray-500">Total Score</div>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

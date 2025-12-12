@@ -95,26 +95,38 @@ class JudgeController extends Controller
                 ]);
             }
     
+            // Optimized: Get criteria IDs that have tabulations using JOIN
+            $criteriaIds = \DB::table('criterias')
+                ->join('tabulations', 'criterias.id', '=', 'tabulations.criteria_id')
+                ->join('rounds', 'tabulations.round_id', '=', 'rounds.id')
+                ->where('criterias.active_id', $activeRound->id)
+                ->where('criterias.is_active', 1)
+                ->where('tabulations.user_id', $judge->id)
+                ->where('rounds.active_id', $activeRound->id)
+                ->distinct()
+                ->pluck('criterias.id');
+            
             // Optimized: Select only needed columns and simplified query
-            $criteria = Criteria::where('active_id', $activeRound->id)
-                ->where('is_active', 1)
-                ->whereHas('tabulations', function($query) use ($judge, $activeRound) {
-                    $query->where('user_id', $judge->id)
-                          ->whereHas('round', function($q) use ($activeRound) {
-                              $q->where('active_id', $activeRound->id);
-                          });
-                })
+            $criteria = Criteria::whereIn('id', $criteriaIds)
                 ->select('id', 'criteria_desc', 'definition', 'percentage', 'max_percentage', 'active_id')
                 ->orderBy('id')
                 ->get();
     
+            // Optimized: Get round IDs first to avoid nested whereHas
+            $roundIds = \DB::table('rounds')
+                ->where('active_id', $activeRound->id)
+                ->pluck('id');
+            
+            // Optimized: Get contestant IDs that have tabulations
+            $contestantIds = \DB::table('rounds')
+                ->join('tabulations', 'rounds.id', '=', 'tabulations.round_id')
+                ->where('rounds.active_id', $activeRound->id)
+                ->where('tabulations.user_id', $judge->id)
+                ->distinct()
+                ->pluck('rounds.contestant_id');
+            
             // Optimized: Eager load with specific columns
-            $contestants = Contestant::whereHas('rounds.tabulations', function($query) use ($judge, $activeRound) {
-                    $query->where('user_id', $judge->id)
-                          ->whereHas('round', function($q) use ($activeRound) {
-                              $q->where('active_id', $activeRound->id);
-                          });
-                })
+            $contestants = Contestant::whereIn('id', $contestantIds)
                 ->with(['rounds' => function($query) use ($activeRound) {
                     $query->where('active_id', $activeRound->id)
                           ->select('id', 'contestant_id', 'active_id');
@@ -123,11 +135,9 @@ class JudgeController extends Controller
                 ->orderBy('sequence_no')
                 ->get();
     
-            // Optimized: Fetch scores with specific columns only
-            $existingScores = Tabulation::where('user_id', $judge->id)
-                ->whereHas('round', function($query) use ($activeRound) {
-                    $query->where('active_id', $activeRound->id);
-                })
+            // Optimized: Fetch scores with JOIN instead of whereHas
+            $existingScores = Tabulation::whereIn('round_id', $roundIds)
+                ->where('user_id', $judge->id)
                 ->with(['round' => function($query) {
                     $query->select('id', 'contestant_id', 'active_id');
                 }])

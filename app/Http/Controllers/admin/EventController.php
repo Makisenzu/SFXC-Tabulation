@@ -60,7 +60,9 @@ class EventController extends Controller
             $validatedData['is_archived'] = 0;
         }
         
-        $eventData->update($validatedData);
+        $eventData->fill($validatedData);
+        $eventData->save();
+        
         return redirect()->back()->with('success', 'Event updated successfully!');
     }
     

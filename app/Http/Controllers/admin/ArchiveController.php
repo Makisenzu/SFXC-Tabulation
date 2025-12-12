@@ -227,8 +227,60 @@ class ArchiveController extends Controller
 
     private function calculateRankingsFromTabulations($event)
     {
-        // Use the existing calculateFinalRankings method
-        return $this->calculateFinalRankings($event);
+        // Check if event has tabulations data
+        $hasTabulations = Round::whereIn('contestant_id', $event->contestants->pluck('id'))
+            ->whereHas('tabulations')
+            ->exists();
+
+        if ($hasTabulations) {
+            // Use tabulations data
+            return $this->calculateFinalRankings($event);
+        } else {
+            // Use medal_scores data (for medal tally events)
+            return $this->calculateRankingsFromMedalScores($event);
+        }
+    }
+
+    private function calculateRankingsFromMedalScores($event)
+    {
+        $rankings = [];
+        
+        // Get medal scores for this event
+        $medalScores = \App\Models\MedalScore::where('event_id', $event->id)
+            ->with('participant')
+            ->get();
+
+        // Group by participant and sum scores
+        $participantScores = [];
+        foreach ($medalScores as $score) {
+            $participantId = $score->participant_id;
+            if (!isset($participantScores[$participantId])) {
+                $participantScores[$participantId] = [
+                    'participant_id' => $participantId,
+                    'participant_name' => $score->participant->participant_name ?? 'Unknown',
+                    'total_score' => 0
+                ];
+            }
+            $participantScores[$participantId]['total_score'] += $score->score;
+        }
+
+        // Convert to array and sort by score
+        $rankings = array_values($participantScores);
+        usort($rankings, function($a, $b) {
+            return $b['total_score'] <=> $a['total_score'];
+        });
+
+        // Assign ranks and format for consistency
+        foreach ($rankings as $index => &$ranking) {
+            $ranking['rank'] = $index + 1;
+            $ranking['contestant_id'] = $ranking['participant_id'];
+            $ranking['contestant_name'] = $ranking['participant_name'];
+            $ranking['average_score'] = $ranking['total_score'];
+            unset($ranking['participant_id']);
+            unset($ranking['participant_name']);
+        }
+
+        return $rankings;
     }
 
     private function buildResultsFromTabulations($event)

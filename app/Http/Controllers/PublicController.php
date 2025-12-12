@@ -119,6 +119,22 @@ class PublicController extends Controller
 
     private function calculateRankingsFromTabulations($event)
     {
+        // Check if event has tabulations data
+        $hasTabulations = \App\Models\Round::whereIn('contestant_id', $event->contestants->pluck('id'))
+            ->whereHas('tabulations')
+            ->exists();
+
+        if ($hasTabulations) {
+            // Use tabulations data (regular events)
+            return $this->calculateRankingsFromTabulationData($event);
+        } else {
+            // Use medal_scores data (medal tally events)
+            return $this->calculateRankingsFromMedalScores($event);
+        }
+    }
+
+    private function calculateRankingsFromTabulationData($event)
+    {
         $rankings = [];
         
         foreach ($event->contestants as $contestant) {
@@ -131,9 +147,11 @@ class PublicController extends Controller
 
             foreach ($rounds as $round) {
                 foreach ($round->tabulations as $tabulation) {
-                    $percentageScore = ($tabulation->score / $tabulation->criteria->max_percentage) * $tabulation->criteria->percentage;
-                    $totalScore += $percentageScore;
-                    $scoreCount++;
+                    if ($tabulation->criteria && $tabulation->criteria->max_percentage > 0) {
+                        $percentageScore = ($tabulation->score / $tabulation->criteria->max_percentage) * $tabulation->criteria->percentage;
+                        $totalScore += $percentageScore;
+                        $scoreCount++;
+                    }
                 }
             }
 
@@ -151,6 +169,48 @@ class PublicController extends Controller
 
         foreach ($rankings as $index => &$ranking) {
             $ranking['rank'] = $index + 1;
+        }
+
+        return $rankings;
+    }
+
+    private function calculateRankingsFromMedalScores($event)
+    {
+        $rankings = [];
+        
+        // Get medal scores for this event
+        $medalScores = \App\Models\MedalScore::where('event_id', $event->id)
+            ->with('participant')
+            ->get();
+
+        // Group by participant and sum scores
+        $participantScores = [];
+        foreach ($medalScores as $score) {
+            $participantId = $score->participant_id;
+            if (!isset($participantScores[$participantId])) {
+                $participantScores[$participantId] = [
+                    'participant_id' => $participantId,
+                    'participant_name' => $score->participant->participant_name ?? 'Unknown',
+                    'total_score' => 0
+                ];
+            }
+            $participantScores[$participantId]['total_score'] += $score->score;
+        }
+
+        // Convert to array and sort by score
+        $rankings = array_values($participantScores);
+        usort($rankings, function($a, $b) {
+            return $b['total_score'] <=> $a['total_score'];
+        });
+
+        // Assign ranks and format for consistency
+        foreach ($rankings as $index => &$ranking) {
+            $ranking['rank'] = $index + 1;
+            $ranking['contestant_id'] = $ranking['participant_id'];
+            $ranking['contestant_name'] = $ranking['participant_name'];
+            $ranking['average_score'] = $ranking['total_score'];
+            unset($ranking['participant_id']);
+            unset($ranking['participant_name']);
         }
 
         return $rankings;

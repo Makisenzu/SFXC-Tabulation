@@ -268,6 +268,19 @@ const ScoreTables = () => {
         per_page: 10,
         total: 0
     });
+    const [customLogo, setCustomLogo] = useState(appLogo);
+
+    // Fetch custom logo on component mount
+    useEffect(() => {
+        fetch('/api/settings/logo')
+            .then(res => res.json())
+            .then(data => {
+                if (data.logo) {
+                    setCustomLogo(`/storage/${data.logo}`);
+                }
+            })
+            .catch(err => console.error('Error loading custom logo:', err));
+    }, []);
 
     // Fetch events on component mount
     useEffect(() => {
@@ -1036,6 +1049,9 @@ const ScoreTables = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
         const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
 
+        // Use custom logo if available
+        const logoToUse = customLogo;
+
         // Create print window
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
@@ -1120,7 +1136,7 @@ const ScoreTables = () => {
                 </style>
             </head>
             <body>
-                <img src="${appLogo}" alt="Logo" class="logo" />
+                <img src="${logoToUse}" alt="Logo" class="logo" />
                 <div class="header-content">
                     <h1>GENERAL TABULATED RESULT</h1>
                 </div>
@@ -1207,6 +1223,9 @@ const ScoreTables = () => {
     const printSpecialAwards = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
         const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
+
+        // Use custom logo if available
+        const logoToUse = customLogo;
 
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
@@ -1298,7 +1317,7 @@ const ScoreTables = () => {
                 </style>
             </head>
             <body>
-                <img src="${appLogo}" alt="Logo" class="logo" />
+                <img src="${logoToUse}" alt="Logo" class="logo" />
                 <div class="header-content">
                     <h1>SPECIAL AWARDS</h1>
                 </div>

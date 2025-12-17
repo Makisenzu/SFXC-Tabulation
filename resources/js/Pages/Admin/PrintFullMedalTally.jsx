@@ -1,7 +1,22 @@
 import { Head } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import appLogo from '@/images/printLogo.jpg';
 
 export default function PrintFullMedalTally({ tally }) {
+    const [customLogo, setCustomLogo] = useState(appLogo);
+
+    useEffect(() => {
+        // Fetch custom logo
+        fetch('/api/settings/logo')
+            .then(res => res.json())
+            .then(data => {
+                if (data.logo) {
+                    setCustomLogo(`/storage/${data.logo}`);
+                }
+            })
+            .catch(err => console.error('Error loading custom logo:', err));
+    }, []);
+
     useEffect(() => {
         window.print();
     }, []);
@@ -91,6 +106,7 @@ export default function PrintFullMedalTally({ tally }) {
             <div className="max-w-full mx-auto p-8 bg-white">
                 {/* Header */}
                 <div className="text-center mb-8 border-b-4 border-gray-800 pb-4">
+                    <img src={customLogo} alt="Logo" className="mx-auto mb-4" style={{ width: '100px', height: 'auto' }} />
                     <h1 className="text-4xl font-bold text-gray-900 mb-2">{tally.tally_title}</h1>
                     <p className="text-xl text-gray-600">Complete Medal Tally Report</p>
                     <p className="text-sm text-gray-500 mt-2">

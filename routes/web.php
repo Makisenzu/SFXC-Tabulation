@@ -15,6 +15,7 @@ use App\Http\Controllers\admin\RoundController;
 use App\Http\Controllers\admin\ScoreController;
 use App\Http\Controllers\admin\MedalController;
 use App\Http\Controllers\admin\ArchiveController;
+use App\Http\Controllers\admin\SettingsController;
 use App\Http\Controllers\judge\JudgeController;
 
 Route::get('/', [PublicController::class, 'home'])->name('public.home');
@@ -26,6 +27,12 @@ Route::get('/archives/{eventId}', [PublicController::class, 'archiveDetails'])->
 
 // API routes for real-time updates
 Route::get('/api/medal-tallies', [PublicController::class, 'getMedalTallyData']);
+
+// Settings API routes (admin only)
+Route::middleware(['auth'])->group(function () {
+    Route::get('/api/settings/logo', [SettingsController::class, 'getLogo']);
+    Route::post('/api/settings/logo', [SettingsController::class, 'uploadLogo']);
+});
 
 Route::get('/admin', function() {
     if (Auth::check()) {
@@ -103,6 +110,10 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/archived/events', function () {
         return Inertia::render('Admin/ArchiveDashboard');
     })->name('admin.archive');
+
+    Route::get('/admin/settings', function () {
+        return Inertia::render('Admin/Settings');
+    })->name('admin.settings');
 
     Route::get('/admin/medal-tally', function () {
         return Inertia::render('Admin/MedalDashboard');

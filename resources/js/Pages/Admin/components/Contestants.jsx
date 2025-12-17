@@ -9,7 +9,8 @@ import {
     FaChevronDown,
     FaChevronRight,
     FaUpload,
-    FaImage
+    FaImage,
+    FaClock
 } from 'react-icons/fa';
 import FormModal from '@/Components/FormModal';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -38,6 +39,7 @@ export default function ContestantTable() {
 
     // State for expanded events
     const [expandedEvents, setExpandedEvents] = useState(new Set());
+    const [showPastEvents, setShowPastEvents] = useState(false);
 
     // Fetch data
     useEffect(() => {
@@ -113,6 +115,31 @@ export default function ContestantTable() {
     const eventsWithContestants = useMemo(() => {
         return safeEvents.filter(event => contestantsByEvent[event.id]?.length > 0);
     }, [safeEvents, contestantsByEvent]);
+
+    // Separate current/future events from past events
+    const { currentEvents, pastEvents } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const current = [];
+        const past = [];
+
+        safeEvents.forEach(event => {
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+
+            // Event is current if it starts today/future OR ends today/future
+            if (eventStart >= today || eventEnd >= today) {
+                current.push(event);
+            } else {
+                past.push(event);
+            }
+        });
+
+        return { currentEvents: current, pastEvents: past };
+    }, [safeEvents]);
 
     // Toggle event expansion
     const toggleEventExpansion = (eventId) => {
@@ -543,7 +570,7 @@ export default function ContestantTable() {
                 {/* Table Content */}
                 <div className="overflow-x-auto">
                     <div className="bg-white">
-                        {eventsWithContestants.length === 0 ? (
+                        {currentEvents.length === 0 && pastEvents.length === 0 ? (
                             <div className="px-4 py-6 text-center text-sm text-gray-500">
                                 <div className="flex flex-col items-center justify-center">
                                     <FaUser className="w-10 h-10 text-gray-300 mb-2" />
@@ -552,7 +579,9 @@ export default function ContestantTable() {
                                 </div>
                             </div>
                         ) : (
-                            eventsWithContestants.map((event) => {
+                            <>
+                                {/* Current/Future Events */}
+                                {currentEvents.map((event) => {
                                 const eventContestants = contestantsByEvent[event.id] || [];
                                 const isExpanded = expandedEvents.has(event.id);
                                 
@@ -671,7 +700,156 @@ export default function ContestantTable() {
                                         )}
                                     </div>
                                 );
-                            })
+                            })}
+
+                            {/* Past Events Collapsible Section */}
+                            {pastEvents.length > 0 && (
+                                <div className="border-t-4 border-gray-300">
+                                    <button
+                                        onClick={() => setShowPastEvents(!showPastEvents)}
+                                        className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 flex items-center justify-between transition-colors"
+                                    >
+                                        <span className="text-sm font-semibold text-gray-700">
+                                            Past Events ({pastEvents.length})
+                                        </span>
+                                        {showPastEvents ? (
+                                            <FaChevronDown className="w-4 h-4 text-gray-600" />
+                                        ) : (
+                                            <FaChevronRight className="w-4 h-4 text-gray-600" />
+                                        )}
+                                    </button>
+                                    
+                                    {showPastEvents && pastEvents.map((event) => {
+                                        const eventContestants = contestantsByEvent[event.id] || [];
+                                        const isExpanded = expandedEvents.has(event.id);
+                                        
+                                        return (
+                                            <div key={event.id} className="border-b border-gray-200 last:border-b-0 bg-gray-50">
+                                                {/* Event Header - Past Event */}
+                                                <div 
+                                                    className="px-4 py-3 bg-gray-100 hover:bg-gray-200 cursor-pointer transition-colors duration-150 opacity-75"
+                                                    onClick={() => toggleEventExpansion(event.id)}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center">
+                                                            {isExpanded ? (
+                                                                <FaChevronDown className="w-4 h-4 text-gray-500 mr-2" />
+                                                            ) : (
+                                                                <FaChevronRight className="w-4 h-4 text-gray-500 mr-2" />
+                                                            )}
+                                                            <div className="flex items-center">
+                                                                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-300 rounded-full">
+                                                                    <FaCalendarAlt className="w-4 h-4 text-gray-600" />
+                                                                </div>
+                                                                <div className="ml-3">
+                                                                    <div className="text-sm font-medium text-gray-700">
+                                                                        {event.event_name}
+                                                                    </div>
+                                                                    <div className="text-sm text-gray-500">
+                                                                        {event.event_type} • {eventContestants.length} contestants
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center space-x-2">
+                                                            {getEventTypeBadge(event.event_type)}
+                                                            {getStatusBadge(event.is_active)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Contestants Table for Past Event */}
+                                                {isExpanded && (
+                                                    <div className="overflow-x-auto bg-gray-50">
+                                                        <table className="min-w-full divide-y divide-gray-300">
+                                                            <thead className="bg-gray-200">
+                                                                <tr>
+                                                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                                                        Contestant Details
+                                                                    </th>
+                                                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                                                        Sequence #
+                                                                    </th>
+                                                                    <th scope="col" className="px-4 py-2 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                                                        Photo
+                                                                    </th>
+                                                                    <th scope="col" className="px-4 py-2 text-right text-xs font-medium text-gray-600 uppercase tracking-wider">
+                                                                        Actions
+                                                                    </th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="bg-gray-50 divide-y divide-gray-300">
+                                                                {eventContestants.map((contestant) => (
+                                                                    <tr key={contestant.id} className="hover:bg-gray-100 transition-colors duration-150">
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex items-center">
+                                                                                <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-400 rounded-full">
+                                                                                    <FaUser className="w-4 h-4 text-gray-600" />
+                                                                                </div>
+                                                                                <div className="ml-3">
+                                                                                    <div className="text-sm font-medium text-gray-700">
+                                                                                        {contestant.contestant_name}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-300 text-gray-700">
+                                                                                #{contestant.sequence_no}
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="px-4 py-3">
+                                                                            <div className="flex items-center">
+                                                                                {contestant.photo ? (
+                                                                                    <img 
+                                                                                        src={`/storage/${contestant.photo}`} 
+                                                                                        alt={contestant.contestant_name}
+                                                                                        className="w-10 h-10 rounded-full object-cover border border-gray-300"
+                                                                                    />
+                                                                                ) : (
+                                                                                    <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                                                                                        <FaUser className="w-5 h-5 text-gray-500" />
+                                                                                    </div>
+                                                                                )}
+                                                                                <button
+                                                                                    onClick={() => openUploadPhoto(contestant)}
+                                                                                    className="ml-2 inline-flex items-center px-2 py-1 text-xs text-gray-700 bg-white border border-gray-300 rounded hover:bg-gray-50"
+                                                                                >
+                                                                                    <FaUpload className="w-3 h-3 mr-1" />
+                                                                                    {contestant.photo ? 'Change' : 'Upload'}
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-right">
+                                                                            <div className="flex items-center justify-end space-x-2">
+                                                                                <button
+                                                                                    onClick={() => openEditContestant(contestant)}
+                                                                                    className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                                                >
+                                                                                    <FaEdit className="w-3 h-3 mr-1" />
+                                                                                    Edit
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => handleDeleteContestant(contestant.id)}
+                                                                                    className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                                                >
+                                                                                    <FaTrash className="w-3 h-3 mr-1" />
+                                                                                    Delete
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </>
                         )}
                     </div>
                 </div>

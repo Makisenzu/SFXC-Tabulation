@@ -199,6 +199,15 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                         Archives
                                     </SidebarLink>
 
+                                    <SidebarLink
+                                        href={route('admin.settings')}
+                                        active={route().current('admin.settings')}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center mr-3">
+                                            <FaUserGear size={18} />
+                                        </div>
+                                        Settings
+                                    </SidebarLink>
                                     {isLocalEnvironment && (
                                         <SidebarLink
                                             href={route('admin.sync')}
@@ -393,6 +402,15 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                         Archives
                                     </SidebarLink>
 
+                                    <SidebarLink
+                                        href={route('admin.settings')}
+                                        active={route().current('admin.settings')}
+                                    >
+                                        <div className="w-5 h-5 flex items-center justify-center mr-3">
+                                            <FaUserGear size={18} />
+                                        </div>
+                                        Settings
+                                    </SidebarLink>
                                     {isLocalEnvironment && (
                                         <SidebarLink
                                             href={route('admin.sync')}

@@ -133,6 +133,7 @@ export default function PrintCueCards({ tally }) {
                         <div key={event.id} className="cue-card bg-white">
                             {/* Card Header */}
                             <div className="text-center mb-8 pb-4 border-b-4 border-gray-800">
+                                <img src={customLogo} alt="Logo" className="mx-auto mb-4" style={{ width: '100px', height: 'auto' }} />
                                 <div className="text-sm text-gray-500 mb-2">
                                     {tally.tally_title}
                                 </div>

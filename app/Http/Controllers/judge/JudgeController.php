@@ -4,6 +4,7 @@ namespace App\Http\Controllers\judge;
 
 use Log;
 use Inertia\Inertia;
+use App\Models\Round;
 use App\Models\Active;
 use App\Models\Assign;
 use App\Models\Criteria;
@@ -12,6 +13,7 @@ use App\Models\Tabulation;
 use App\Events\JudgeScores;
 use Illuminate\Http\Request;
 use App\Events\JudgeHelpRequested;
+use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\Controller;
 use Illuminate\Support\Facades\Auth;
 
@@ -21,7 +23,7 @@ class JudgeController extends Controller
      * Display a listing of the resource.
      */
 
-     public function getTabulationData(){
+     public function getTabulationData(Request $request){
         try {
             $judge = Auth::user();
 
@@ -47,7 +49,7 @@ class JudgeController extends Controller
 
             $event = $assignedEvent->event;
     
-            // Optimized: Select only needed columns
+            // Get the currently active round
             $activeRound = Active::where('event_id', $event->id)
                 ->where('is_active', true)
                 ->select('id', 'event_id', 'round_no', 'is_active')
@@ -59,11 +61,38 @@ class JudgeController extends Controller
                     'error' => 'No active round found for this event'
                 ], 404);
             }
+
+            // Check if judge is requesting a specific round
+            $requestedRoundNo = $request->query('round_no');
+            $viewingRound = $activeRound;
+            
+            if ($requestedRoundNo && $requestedRoundNo != $activeRound->round_no) {
+                $viewingRound = Active::where('event_id', $event->id)
+                    ->where('round_no', $requestedRoundNo)
+                    ->first();
+                    
+                if (!$viewingRound) {
+                    return response()->json([
+                        'success' => false,
+                        'error' => 'Requested round not found'
+                    ], 404);
+                }
+            }
+
+            // Determine if scores should be locked
+            // Scores are locked if viewing a previous round (round_no < active round_no)
+            $isLocked = $viewingRound->round_no < $activeRound->round_no;
     
+            // Get all available rounds for this event
+            $allRounds = Active::where('event_id', $event->id)
+                ->orderBy('round_no')
+                ->select('id', 'round_no', 'is_active')
+                ->get();
+
             // Optimized: Check existence efficiently
             $hasTabulationData = Tabulation::where('user_id', $judge->id)
-                ->whereHas('round', function($query) use ($activeRound) {
-                    $query->where('active_id', $activeRound->id);
+                ->whereHas('round', function($query) use ($viewingRound) {
+                    $query->where('active_id', $viewingRound->id);
                 })
                 ->exists();
     
@@ -82,6 +111,13 @@ class JudgeController extends Controller
                             'round_no' => $activeRound->round_no,
                             'is_active' => $activeRound->is_active,
                         ],
+                        'viewing_round' => [
+                            'id' => $viewingRound->id,
+                            'round_no' => $viewingRound->round_no,
+                            'is_active' => $viewingRound->is_active,
+                        ],
+                        'available_rounds' => $allRounds,
+                        'is_locked' => $isLocked,
                         'contestants' => [],
                         'criteria_summary' => [
                             'total_criteria' => 0,
@@ -96,13 +132,13 @@ class JudgeController extends Controller
             }
     
             // Optimized: Get criteria IDs that have tabulations using JOIN
-            $criteriaIds = \DB::table('criterias')
+            $criteriaIds = DB::table('criterias')
                 ->join('tabulations', 'criterias.id', '=', 'tabulations.criteria_id')
                 ->join('rounds', 'tabulations.round_id', '=', 'rounds.id')
-                ->where('criterias.active_id', $activeRound->id)
+                ->where('criterias.active_id', $viewingRound->id)
                 ->where('criterias.is_active', 1)
                 ->where('tabulations.user_id', $judge->id)
-                ->where('rounds.active_id', $activeRound->id)
+                ->where('rounds.active_id', $viewingRound->id)
                 ->distinct()
                 ->pluck('criterias.id');
             
@@ -113,22 +149,22 @@ class JudgeController extends Controller
                 ->get();
     
             // Optimized: Get round IDs first to avoid nested whereHas
-            $roundIds = \DB::table('rounds')
-                ->where('active_id', $activeRound->id)
+            $roundIds = DB::table('rounds')
+                ->where('active_id', $viewingRound->id)
                 ->pluck('id');
             
             // Optimized: Get contestant IDs that have tabulations
-            $contestantIds = \DB::table('rounds')
+            $contestantIds = DB::table('rounds')
                 ->join('tabulations', 'rounds.id', '=', 'tabulations.round_id')
-                ->where('rounds.active_id', $activeRound->id)
+                ->where('rounds.active_id', $viewingRound->id)
                 ->where('tabulations.user_id', $judge->id)
                 ->distinct()
                 ->pluck('rounds.contestant_id');
             
             // Optimized: Eager load with specific columns
             $contestants = Contestant::whereIn('id', $contestantIds)
-                ->with(['rounds' => function($query) use ($activeRound) {
-                    $query->where('active_id', $activeRound->id)
+                ->with(['rounds' => function($query) use ($viewingRound) {
+                    $query->where('active_id', $viewingRound->id)
                           ->select('id', 'contestant_id', 'active_id');
                 }])
                 ->select('id', 'contestant_name', 'photo', 'sequence_no')
@@ -157,11 +193,18 @@ class JudgeController extends Controller
                     'round_no' => $activeRound->round_no,
                     'is_active' => $activeRound->is_active,
                 ],
-                'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $activeRound) {
+                'viewing_round' => [
+                    'id' => $viewingRound->id,
+                    'round_no' => $viewingRound->round_no,
+                    'is_active' => $viewingRound->is_active,
+                ],
+                'available_rounds' => $allRounds,
+                'is_locked' => $isLocked,
+                'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $viewingRound, $isLocked) {
                     $contestantScores = $existingScores->get($contestant->id, collect());
-                    $round = $contestant->rounds->firstWhere('active_id', $activeRound->id);
+                    $round = $contestant->rounds->firstWhere('active_id', $viewingRound->id);
                     
-                    $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores) {
+                    $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores, $isLocked) {
                         $scoreRecord = $contestantScores->firstWhere('criteria_id', $criterion->id);
                         
                         return [
@@ -172,7 +215,7 @@ class JudgeController extends Controller
                             'max_percentage' => $criterion->max_percentage,
                             'score' => $scoreRecord ? $scoreRecord->score : 0,
                             'tabulation_id' => $scoreRecord ? $scoreRecord->id : null,
-                            'is_lock' => $scoreRecord ? $scoreRecord->is_lock : false
+                            'is_lock' => $isLocked || ($scoreRecord ? $scoreRecord->is_lock : false)
                         ];
                     });
     
@@ -220,11 +263,36 @@ class JudgeController extends Controller
             'round_id' => 'required|exists:rounds,id'
         ]);
 
+        // Get the round to check if it's from a previous round
+        $round = Round::findOrFail($request->round_id);
+        $roundActive = Active::findOrFail($round->active_id);
+        
+        // Get the current active round for this event
+        $currentActiveRound = Active::where('event_id', $roundActive->event_id)
+            ->where('is_active', true)
+            ->first();
+        
+        // Check if trying to update a score from a previous round
+        if ($currentActiveRound && $roundActive->round_no < $currentActiveRound->round_no) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Cannot update scores from previous rounds. Scores are locked.'
+            ], 403);
+        }
+
         // If tabulation_id is provided, update existing record
         if ($request->tabulation_id) {
             $tabulation = Tabulation::where('id', $request->tabulation_id)
                 ->where('user_id', $judge->id)
                 ->firstOrFail();
+
+            // Check if the score is locked
+            if ($tabulation->is_lock) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'This score is locked and cannot be modified'
+                ], 403);
+            }
 
             $tabulation->update([
                 'score' => $request->score

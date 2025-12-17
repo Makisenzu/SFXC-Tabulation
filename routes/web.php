@@ -148,6 +148,7 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
     Route::get('/getOverallRankings/{eventId}/{roundNo}', [ScoreController::class, 'getOverallRankings']);
     Route::post('/admin/update-score', [ScoreController::class, 'updateScore']);
     Route::post('/admin/notify-judge', [ScoreController::class, 'notifyJudge']);
+    Route::post('/admin/import-scores', [ScoreController::class, 'importScoresFromPreviousRound']);
     
     // Debug route to check database data
     Route::get('/debug-scores/{eventId}/{roundNo}', function($eventId, $roundNo) {

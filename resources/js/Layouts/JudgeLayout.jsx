@@ -27,11 +27,12 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
     };
 
     // Fetch tabulation data from API
-    const fetchTabulationData = useCallback(async () => {
+    const fetchTabulationData = useCallback(async (roundNo = null) => {
         try {
             setLoading(true);
             
-            const response = await fetch('/judge/tabulation-data');
+            const url = roundNo ? `/judge/tabulation-data?round_no=${roundNo}` : '/judge/tabulation-data';
+            const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
@@ -138,7 +139,17 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
 
     const contestants = tabulationData?.contestants || [];
     const currentRound = tabulationData?.active_round?.round_no;
+    const viewingRound = tabulationData?.viewing_round?.round_no || currentRound;
+    const availableRounds = tabulationData?.available_rounds || [];
+    const isLocked = tabulationData?.is_locked || false;
     const eventName = tabulationData?.event?.event_name;
+
+    const handleRoundChange = (roundNo) => {
+        fetchTabulationData(roundNo);
+        if (onContestantSelect) {
+            onContestantSelect(null); // Clear selection when changing rounds
+        }
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 flex">
@@ -164,6 +175,41 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                         </div>
                     </div>
                 </div>
+
+                {/* Round Navigation */}
+                {availableRounds.length > 0 && (
+                    <div className="p-4 border-b border-gray-200 bg-gray-50">
+                        <label className="block text-xs font-semibold text-gray-700 mb-2">
+                            SELECT ROUND
+                        </label>
+                        <div className="flex items-center gap-2">
+                            <select
+                                value={viewingRound}
+                                onChange={(e) => handleRoundChange(Number(e.target.value))}
+                                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-sm font-medium"
+                            >
+                                {availableRounds.map((round) => (
+                                    <option key={round.id} value={round.round_no}>
+                                        Round {round.round_no} {round.is_active ? '(Active)' : ''}
+                                    </option>
+                                ))}
+                            </select>
+                            {isLocked && (
+                                <div className="flex items-center gap-1 px-3 py-2 bg-red-100 text-red-800 rounded-lg text-xs font-semibold">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                    </svg>
+                                    <span>Locked</span>
+                                </div>
+                            )}
+                        </div>
+                        {isLocked && (
+                            <p className="text-xs text-red-600 mt-2">
+                                This round is from a previous round. Scores cannot be modified.
+                            </p>
+                        )}
+                    </div>
+                )}
                 
                 <div className="flex-1 overflow-y-auto">
                     <div className="p-6">

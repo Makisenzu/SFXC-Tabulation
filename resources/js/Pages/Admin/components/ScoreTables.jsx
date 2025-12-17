@@ -15,6 +15,232 @@ import {
 import appLogo from '@/images/printLogo.jpg';
 import axios from 'axios';
 
+// Import Scores Modal Component
+const ImportScoresModal = ({ 
+    showModal, 
+    setShowModal, 
+    rounds, 
+    selectedRound, 
+    criteria, 
+    contestants,
+    importingScores,
+    handleImportScores 
+}) => {
+    const [sourceRound, setSourceRound] = useState('');
+    const [targetCriteriaId, setTargetCriteriaId] = useState('');
+    const [selectedContestants, setSelectedContestants] = useState([]);
+
+    const toggleContestant = (contestantId) => {
+        setSelectedContestants(prev => 
+            prev.includes(contestantId) 
+                ? prev.filter(id => id !== contestantId)
+                : [...prev, contestantId]
+        );
+    };
+
+    const toggleAllContestants = () => {
+        if (selectedContestants.length === contestants.length) {
+            setSelectedContestants([]);
+        } else {
+            setSelectedContestants(contestants.map(c => c.id));
+        }
+    };
+
+    const handleSubmit = () => {
+        if (!sourceRound || !targetCriteriaId || selectedContestants.length === 0) {
+            alert('Please select source round, target criteria, and at least one contestant');
+            return;
+        }
+        handleImportScores(sourceRound, targetCriteriaId, selectedContestants);
+    };
+
+    if (!showModal) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+                {/* Header */}
+                <div className="px-8 py-6 border-b border-gray-100 sticky top-0 bg-white z-10">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900">
+                                Import Scores from Previous Round
+                            </h3>
+                            <p className="text-sm text-gray-500 mt-1">
+                                Calculate and import weighted average scores
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowModal(false)}
+                            className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                            disabled={importingScores}
+                        >
+                            <X className="w-5 h-5 text-gray-400" />
+                        </button>
+                    </div>
+                </div>
+
+                {/* Content */}
+                <div className="px-8 py-6 space-y-6">
+                    {/* Step 1: Select Source Round */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            1. Select Previous Round
+                        </label>
+                        <select
+                            value={sourceRound}
+                            onChange={(e) => setSourceRound(e.target.value)}
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-orange-500 transition-all"
+                            disabled={importingScores}
+                        >
+                            <option value="">Choose a round to import from</option>
+                            {rounds
+                                .filter(round => round.round_no < selectedRound)
+                                .map(round => (
+                                    <option key={round.round_no} value={round.round_no}>
+                                        Round {round.round_no}
+                                    </option>
+                                ))}
+                        </select>
+                    </div>
+
+                    {/* Step 2: Select Target Criteria */}
+                    <div>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                            2. Select Target Criteria (Current Round {selectedRound})
+                        </label>
+                        <select
+                            value={targetCriteriaId}
+                            onChange={(e) => setTargetCriteriaId(e.target.value)}
+                            className="w-full px-4 py-3 bg-white border-2 border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-orange-500 transition-all"
+                            disabled={importingScores}
+                        >
+                            <option value="">Choose criteria to populate</option>
+                            {criteria.map(criterion => (
+                                <option key={criterion.id} value={criterion.id}>
+                                    {criterion.criteria_desc} ({criterion.percentage}%)
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Step 3: Select Contestants */}
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="block text-sm font-semibold text-gray-700">
+                                3. Select Contestants
+                            </label>
+                            <button
+                                onClick={toggleAllContestants}
+                                className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+                                disabled={importingScores}
+                            >
+                                {selectedContestants.length === contestants.length ? 'Deselect All' : 'Select All'}
+                            </button>
+                        </div>
+                        <div className="border-2 border-gray-200 rounded-xl max-h-64 overflow-y-auto">
+                            {contestants.map(contestant => (
+                                <label
+                                    key={contestant.id}
+                                    className="flex items-center px-4 py-3 hover:bg-orange-50 cursor-pointer border-b border-gray-100 last:border-b-0"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedContestants.includes(contestant.id)}
+                                        onChange={() => toggleContestant(contestant.id)}
+                                        disabled={importingScores}
+                                        className="w-4 h-4 text-orange-600 border-gray-300 rounded focus:ring-orange-500"
+                                    />
+                                    <span className="ml-3 text-sm font-medium text-gray-900">
+                                        {contestant.contestant_name}
+                                    </span>
+                                </label>
+                            ))}
+                            {contestants.length === 0 && (
+                                <p className="text-sm text-gray-500 text-center py-4">
+                                    No contestants available
+                                </p>
+                            )}
+                        </div>
+                        {selectedContestants.length > 0 && (
+                            <p className="text-sm text-gray-600 mt-2">
+                                {selectedContestants.length} contestant(s) selected
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Info Box */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                        <div className="flex gap-3">
+                            <div className="flex-shrink-0">
+                                <Award className="w-5 h-5 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                                <p className="text-sm font-medium text-blue-900">
+                                    How this works:
+                                </p>
+                                <ul className="text-xs text-blue-700 mt-2 space-y-1 list-disc list-inside">
+                                    <li>Calculates weighted scores from all criteria in the source round</li>
+                                    <li>Averages scores across all judges</li>
+                                    <li>Converts to a rating score (0-10 scale)</li>
+                                    <li>Imports the same calculated score for all judges</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Warning Box */}
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                        <div className="flex gap-3">
+                            <div className="flex-shrink-0">
+                                <Award className="w-5 h-5 text-yellow-600" />
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-yellow-900">
+                                    Warning
+                                </p>
+                                <p className="text-xs text-yellow-700 mt-1">
+                                    Existing scores for the selected criteria will be overwritten. This action cannot be undone.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <div className="px-8 py-6 bg-gray-50 border-t border-gray-100 rounded-b-2xl sticky bottom-0">
+                    <div className="flex gap-3">
+                        <button
+                            onClick={() => setShowModal(false)}
+                            className="flex-1 px-6 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-white transition-colors"
+                            disabled={importingScores}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSubmit}
+                            disabled={importingScores || !sourceRound || !targetCriteriaId || selectedContestants.length === 0}
+                            className="flex-1 px-6 py-3 bg-orange-600 text-white rounded-xl text-sm font-semibold hover:bg-orange-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        >
+                            {importingScores ? (
+                                <>
+                                    <RefreshCw className="w-4 h-4 animate-spin" />
+                                    Importing...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="w-4 h-4" />
+                                    Import Scores
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 const ScoreTables = () => {
     const [events, setEvents] = useState([]);
     const [selectedEvent, setSelectedEvent] = useState(null);
@@ -33,6 +259,8 @@ const ScoreTables = () => {
     const [editingScore, setEditingScore] = useState(null);
     const [tempScore, setTempScore] = useState('');
     const dropdownRef = useRef(null);
+    const [showImportScoresModal, setShowImportScoresModal] = useState(false);
+    const [importingScores, setImportingScores] = useState(false);
 
     // Fetch events on component mount
     useEffect(() => {
@@ -344,6 +572,41 @@ const ScoreTables = () => {
             }
         });
         return total.toFixed(2);
+    };
+
+    // Handle import scores with weighted calculation
+    const handleImportScores = async (sourceRound, targetCriteriaId, selectedContestantIds) => {
+        if (!selectedEvent || !selectedRound || !targetCriteriaId || selectedContestantIds.length === 0) {
+            alert('Please select target criteria and at least one contestant');
+            return;
+        }
+        
+        if (window.confirm(`Import weighted scores from Round ${sourceRound} to selected criteria? This will calculate and import aggregated scores for ${selectedContestantIds.length} contestant(s).`)) {
+            setImportingScores(true);
+            try {
+                const response = await axios.post('/admin/import-scores', {
+                    event_id: selectedEvent,
+                    source_round_no: sourceRound,
+                    target_round_no: selectedRound,
+                    target_criteria_id: targetCriteriaId,
+                    contestant_ids: selectedContestantIds,
+                });
+
+                if (response.data.success) {
+                    alert(response.data.message);
+                    setShowImportScoresModal(false);
+                    // Refresh the data to show imported scores
+                    await fetchRoundData(selectedEvent, selectedRound);
+                } else {
+                    alert(response.data.message || 'Failed to import scores');
+                }
+            } catch (error) {
+                console.error('Error importing scores:', error);
+                alert(`Failed to import scores: ${error.response?.data?.message || error.message}`);
+            } finally {
+                setImportingScores(false);
+            }
+        }
     };
 
     // Calculate weighted percentage for a contestant by a judge
@@ -1175,6 +1438,15 @@ const ScoreTables = () => {
                                     </div>
                                 )}
                             </div>
+                            {selectedRound > 1 && (
+                                <button
+                                    onClick={() => setShowImportScoresModal(true)}
+                                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+                                >
+                                    <RefreshCw className="w-4 h-4 mr-2" />
+                                    Import Scores
+                                </button>
+                            )}
                         </div>
                     )}
                 </div>
@@ -1665,6 +1937,18 @@ const ScoreTables = () => {
                     </div>
                 </div>
             )}
+
+            {/* Import Scores Modal */}
+            <ImportScoresModal
+                showModal={showImportScoresModal}
+                setShowModal={setShowImportScoresModal}
+                rounds={rounds}
+                selectedRound={selectedRound}
+                criteria={criteria}
+                contestants={contestants}
+                importingScores={importingScores}
+                handleImportScores={handleImportScores}
+            />
         </div>
     );
 };

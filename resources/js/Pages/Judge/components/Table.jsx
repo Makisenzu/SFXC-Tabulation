@@ -132,7 +132,9 @@ const Table = ({ selectedContestant }) => {
     }, [selectedContestant?.id]);
 
     // Handle score input change - optimized with debounce
-    const handleScoreChange = useCallback((criteriaId, value, tabulationId) => {
+    const handleScoreChange = useCallback((criteriaId, value, tabulationId, isLocked) => {
+        if (isLocked) return; // Don't allow changes if locked
+        
         if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
             const numValue = parseFloat(value);
             if (value === '' || (numValue >= 0 && numValue <= 10)) {
@@ -147,7 +149,9 @@ const Table = ({ selectedContestant }) => {
     }, [autoSaveScore]);
 
     // Handle score input blur - format the value and force immediate save
-    const handleScoreBlur = useCallback(async (criteriaId, value, tabulationId) => {
+    const handleScoreBlur = useCallback(async (criteriaId, value, tabulationId, isLocked) => {
+        if (isLocked) return; // Don't allow changes if locked
+        
         let finalValue = value;
         
         if (value && value !== '') {
@@ -370,20 +374,33 @@ const Table = ({ selectedContestant }) => {
                                                                 <input
                                                                     type="text"
                                                                     value={currentScore || ''}
-                                                                    onChange={(e) => handleScoreChange(criterion.id, e.target.value, criterion.tabulation_id)}
-                                                                    onBlur={(e) => handleScoreBlur(criterion.id, e.target.value, criterion.tabulation_id)}
-                                                                    className="w-32 text-3xl font-bold text-black text-center border-2 border-gray-400 rounded p-2 focus:border-gray-600 focus:outline-none transition-all bg-white"
+                                                                    onChange={(e) => handleScoreChange(criterion.id, e.target.value, criterion.tabulation_id, criterion.is_lock)}
+                                                                    onBlur={(e) => handleScoreBlur(criterion.id, e.target.value, criterion.tabulation_id, criterion.is_lock)}
+                                                                    disabled={criterion.is_lock}
+                                                                    className={`w-32 text-3xl font-bold text-black text-center border-2 border-gray-400 rounded p-2 focus:border-gray-600 focus:outline-none transition-all ${
+                                                                        criterion.is_lock 
+                                                                            ? 'bg-gray-100 cursor-not-allowed opacity-60' 
+                                                                            : 'bg-white'
+                                                                    }`}
                                                                     placeholder="0.00"
                                                                     maxLength={5}
                                                                 />
-                                                                {saving && (
+                                                                {criterion.is_lock && (
+                                                                    <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs px-2 py-1 rounded font-bold flex items-center gap-1">
+                                                                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                                                        </svg>
+                                                                        Locked
+                                                                    </div>
+                                                                )}
+                                                                {saving && !criterion.is_lock && (
                                                                     <div className="absolute -top-2 -right-2 border-2 border-gray-400 bg-white text-black text-xs px-2 py-1 rounded font-bold">
                                                                         Saving
                                                                     </div>
                                                                 )}
                                                             </div>
                                                             <div className="text-xs text-black font-semibold">
-                                                                Range: 0.00 - 10.00
+                                                                {criterion.is_lock ? 'Score Locked' : 'Range: 0.00 - 10.00'}
                                                             </div>
                                                         </div>
                                                     </td>

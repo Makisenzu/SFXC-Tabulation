@@ -438,4 +438,198 @@ class ScoreController extends Controller
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
+
+    /**
+     * Import scores from previous rounds with weighted calculation
+     * This calculates weighted average scores from previous round and imports them
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function importScoresFromPreviousRound(Request $request)
+    {
+        try {
+            $request->validate([
+                'event_id' => 'required|exists:events,id',
+                'source_round_no' => 'required|integer|min:1',
+                'target_round_no' => 'required|integer|min:1',
+                'target_criteria_id' => 'required|exists:criterias,id',
+                'contestant_ids' => 'required|array|min:1',
+                'contestant_ids.*' => 'exists:contestants,id',
+            ]);
+
+            $eventId = $request->event_id;
+            $sourceRoundNo = $request->source_round_no;
+            $targetRoundNo = $request->target_round_no;
+            $targetCriteriaId = $request->target_criteria_id;
+            $contestantIds = $request->contestant_ids;
+
+            if ($sourceRoundNo >= $targetRoundNo) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Source round must be before target round'
+                ], 400);
+            }
+
+            // Get source active round
+            $sourceActive = Active::where('event_id', $eventId)
+                ->where('round_no', $sourceRoundNo)
+                ->first();
+
+            if (!$sourceActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Source round not found'
+                ], 404);
+            }
+
+            // Get target active round
+            $targetActive = Active::where('event_id', $eventId)
+                ->where('round_no', $targetRoundNo)
+                ->first();
+
+            if (!$targetActive) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Target round not found'
+                ], 404);
+            }
+
+            // Verify target criteria exists and belongs to target round
+            $targetCriteria = Criteria::where('id', $targetCriteriaId)
+                ->where('active_id', $targetActive->id)
+                ->where('is_active', 1)
+                ->first();
+
+            if (!$targetCriteria) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Target criteria not found in target round'
+                ], 404);
+            }
+
+            // Get all criteria from source round for weighting
+            $sourceCriteria = Criteria::where('active_id', $sourceActive->id)
+                ->where('is_active', 1)
+                ->get();
+
+            if ($sourceCriteria->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No criteria found in source round'
+                ], 404);
+            }
+
+            // Get all judges assigned to this event
+            $judges = User::whereHas('assigns', function($query) use ($eventId) {
+                    $query->where('event_id', $eventId);
+                })
+                ->where('role_id', 2)
+                ->where('is_active', 1)
+                ->get();
+
+            if ($judges->isEmpty()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'No judges found for this event'
+                ], 404);
+            }
+
+            $importedCount = 0;
+            $skippedCount = 0;
+
+            foreach ($contestantIds as $contestantId) {
+                // Find contestant's round in source
+                $sourceRound = Round::where('active_id', $sourceActive->id)
+                    ->where('contestant_id', $contestantId)
+                    ->first();
+
+                if (!$sourceRound) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                // Find contestant's round in target
+                $targetRound = Round::where('active_id', $targetActive->id)
+                    ->where('contestant_id', $contestantId)
+                    ->first();
+
+                if (!$targetRound) {
+                    $skippedCount++;
+                    continue;
+                }
+
+                // Calculate weighted average score for this contestant
+                $judgePercentages = [];
+
+                foreach ($judges as $judge) {
+                    $judgeTotal = 0;
+
+                    // Get all scores from this judge for this contestant in source round
+                    foreach ($sourceCriteria as $criterion) {
+                        $tabulation = Tabulation::where('round_id', $sourceRound->id)
+                            ->where('user_id', $judge->id)
+                            ->where('criteria_id', $criterion->id)
+                            ->first();
+
+                        if ($tabulation) {
+                            // Calculate weighted score: (score / 10) * (percentage / 100) * 100
+                            // Example: score=9, percentage=40 → (9/10) * (40/100) * 100 = 36%
+                            $weightValue = $criterion->percentage / 100;
+                            $judgeTotal += ($tabulation->score / 10) * $weightValue * 100;
+                        }
+                    }
+
+                    $judgePercentages[] = $judgeTotal;
+                }
+
+                // Calculate average percentage across all judges
+                $avgPercentage = count($judgePercentages) > 0 
+                    ? array_sum($judgePercentages) / count($judgePercentages) 
+                    : 0;
+
+                // Convert percentage to rating score (0-10 scale)
+                // Example: 87.5% → 87.5 * 10 / 100 = 8.75
+                $ratingScore = ($avgPercentage * 10) / 100;
+
+                // Round to 2 decimal places
+                $ratingScore = round($ratingScore, 2);
+
+                // Import this calculated score for ALL judges in target round
+                foreach ($judges as $judge) {
+                    Tabulation::updateOrCreate(
+                        [
+                            'round_id' => $targetRound->id,
+                            'user_id' => $judge->id,
+                            'criteria_id' => $targetCriteriaId,
+                        ],
+                        [
+                            'score' => $ratingScore,
+                            'is_lock' => false
+                        ]
+                    );
+                }
+
+                $importedCount++;
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Successfully imported calculated scores for {$importedCount} contestant(s). {$skippedCount} contestant(s) skipped.",
+                'imported_count' => $importedCount,
+                'skipped_count' => $skippedCount
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('importScoresFromPreviousRound error', [
+                'error' => $e->getMessage(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to import scores: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }

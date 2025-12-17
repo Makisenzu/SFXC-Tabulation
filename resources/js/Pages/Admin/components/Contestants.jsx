@@ -45,7 +45,7 @@ export default function ContestantTable() {
             setLoading(true);
             try {
                 // Fetch events
-                const eventsResponse = await fetch('/getEvents');
+                const eventsResponse = await fetch('/getEvents?per_page=100&show_past=true');
                 if (!eventsResponse.ok) {
                     throw new Error(`HTTP error! status: ${eventsResponse.status}`);
                 }
@@ -58,14 +58,14 @@ export default function ContestantTable() {
                 }
                 const contestantsData = await contestantsResponse.json();
 
-                // Process events data
+                // Process events data - handle paginated response
                 let processedEvents = [];
-                if (Array.isArray(eventsData)) {
+                if (eventsData && Array.isArray(eventsData.data)) {
+                    processedEvents = eventsData.data;
+                } else if (Array.isArray(eventsData)) {
                     processedEvents = eventsData;
                 } else if (eventsData && Array.isArray(eventsData.events)) {
                     processedEvents = eventsData.events;
-                } else if (eventsData && Array.isArray(eventsData.data)) {
-                    processedEvents = eventsData.data;
                 }
                 setEvents(processedEvents);
 
@@ -289,18 +289,18 @@ export default function ContestantTable() {
     // Refetch data
     const refetchData = async () => {
         try {
-            const eventsResponse = await fetch('/getEvents');
+            const eventsResponse = await fetch('/getEvents?per_page=100&show_past=true');
             const contestantsResponse = await fetch('/getContestants');
             
             if (eventsResponse.ok) {
                 const eventsData = await eventsResponse.json();
                 let processedEvents = [];
-                if (Array.isArray(eventsData)) {
+                if (eventsData && Array.isArray(eventsData.data)) {
+                    processedEvents = eventsData.data;
+                } else if (Array.isArray(eventsData)) {
                     processedEvents = eventsData;
                 } else if (eventsData && Array.isArray(eventsData.events)) {
                     processedEvents = eventsData.events;
-                } else if (eventsData && Array.isArray(eventsData.data)) {
-                    processedEvents = eventsData.data;
                 }
                 setEvents(processedEvents);
             }

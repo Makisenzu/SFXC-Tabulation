@@ -20,8 +20,25 @@ class EventController extends Controller
     {
         //
     }
-    public function showEvents() {
-        $events = Event::all();
+    public function showEvents(Request $request) {
+        $perPage = $request->input('per_page', 10);
+        $showPast = $request->input('show_past', false);
+        $today = now()->startOfDay();
+
+        $query = Event::query();
+
+        // Filter by date: show today and future events by default
+        if (!$showPast) {
+            $query->where(function($q) use ($today) {
+                $q->where('event_start', '>=', $today)
+                  ->orWhere('event_end', '>=', $today);
+            });
+        }
+
+        // Order by event start date (newest first)
+        $query->orderBy('event_start', 'desc');
+
+        $events = $query->paginate($perPage);
 
         return response()->json($events);
     }

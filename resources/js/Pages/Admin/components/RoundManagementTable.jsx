@@ -37,7 +37,7 @@ export default function RoundManagementTable() {
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-                const eventsResponse = await fetch('/getEvents');
+                const eventsResponse = await fetch('/getEvents?per_page=100&show_past=true');
                 if (!eventsResponse.ok) throw new Error(`HTTP error! status: ${eventsResponse.status}`);
                 const eventsData = await eventsResponse.json();
                 
@@ -45,8 +45,10 @@ export default function RoundManagementTable() {
                 if (!contestantsResponse.ok) throw new Error(`HTTP error! status: ${contestantsResponse.status}`);
                 const contestantsData = await contestantsResponse.json();
 
-                let processedEvents = Array.isArray(eventsData) ? eventsData : 
-                    eventsData?.events || eventsData?.data || [];
+                // Handle paginated response
+                let processedEvents = eventsData?.data && Array.isArray(eventsData.data) ? eventsData.data :
+                    Array.isArray(eventsData) ? eventsData : 
+                    eventsData?.events || [];
                 setEvents(processedEvents);
 
                 let processedContestants = Array.isArray(contestantsData) ? contestantsData :
@@ -169,13 +171,14 @@ export default function RoundManagementTable() {
 
     const refetchData = async () => {
         try {
-            const eventsResponse = await fetch('/getEvents');
+            const eventsResponse = await fetch('/getEvents?per_page=100&show_past=true');
             const contestantsResponse = await fetch('/getContestants');
             
             if (eventsResponse.ok) {
                 const eventsData = await eventsResponse.json();
-                let processedEvents = Array.isArray(eventsData) ? eventsData :
-                    eventsData?.events || eventsData?.data || [];
+                let processedEvents = eventsData?.data && Array.isArray(eventsData.data) ? eventsData.data :
+                    Array.isArray(eventsData) ? eventsData :
+                    eventsData?.events || [];
                 setEvents(processedEvents);
             }
 

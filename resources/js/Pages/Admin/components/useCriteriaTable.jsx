@@ -30,6 +30,13 @@ export function useCriteriaTable() {
     const [editCriteriaFormData, setEditCriteriaFormData] = useState({});
 
     const [expandedEvents, setExpandedEvents] = useState(new Set());
+    const [showPastEvents, setShowPastEvents] = useState(false);
+    const [eventsPagination, setEventsPagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0
+    });
 
     const safeEvents = Array.isArray(events) ? events : [];
     const safeCriterias = Array.isArray(criterias) ? criterias : [];
@@ -39,7 +46,7 @@ export function useCriteriaTable() {
             setLoading(true);
             try {
                 if (activeTab === 'events') {
-                    const response = await fetch('/getEvents');
+                    const response = await fetch(`/getEvents?page=${eventsPagination.current_page}&per_page=10&show_past=${showPastEvents}`);
                     
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
@@ -48,12 +55,19 @@ export function useCriteriaTable() {
                     const data = await response.json();
                     console.log('Events API Response:', data);
                     
-                    if (Array.isArray(data)) {
+                    // Handle paginated response
+                    if (data && Array.isArray(data.data)) {
+                        setEvents(data.data);
+                        setEventsPagination({
+                            current_page: data.current_page,
+                            last_page: data.last_page,
+                            per_page: data.per_page,
+                            total: data.total
+                        });
+                    } else if (Array.isArray(data)) {
                         setEvents(data);
                     } else if (data && Array.isArray(data.events)) {
                         setEvents(data.events);
-                    } else if (data && Array.isArray(data.data)) {
-                        setEvents(data.data);
                     } else {
                         console.warn('Unexpected events API response format:', data);
                         setEvents([]);
@@ -94,7 +108,7 @@ export function useCriteriaTable() {
         };
 
         fetchData();
-    }, [activeTab]);
+    }, [activeTab, showPastEvents, eventsPagination.current_page]);
 
     const criteriaByEvent = useMemo(() => {
         const grouped = {};
@@ -111,6 +125,31 @@ export function useCriteriaTable() {
     const eventsWithCriteria = useMemo(() => {
         return safeEvents.filter(event => criteriaByEvent[event.id]?.length > 0);
     }, [safeEvents, criteriaByEvent]);
+
+    // Separate current/future events from past events
+    const { currentEvents, pastEvents } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const current = [];
+        const past = [];
+
+        safeEvents.forEach(event => {
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+
+            // Event is current if it starts today/future OR ends today/future
+            if (eventStart >= today || eventEnd >= today) {
+                current.push(event);
+            } else {
+                past.push(event);
+            }
+        });
+
+        return { currentEvents: current, pastEvents: past };
+    }, [safeEvents]);
 
     const toggleEventExpansion = (eventId) => {
         const newExpanded = new Set(expandedEvents);
@@ -734,6 +773,8 @@ export function useCriteriaTable() {
         safeCriterias,
         eventsWithCriteria,
         criteriaByEvent,
+        currentEvents,
+        pastEvents,
         loading,
         error,
         expandedEvents,
@@ -750,6 +791,10 @@ export function useCriteriaTable() {
         editEventFormData,
         addCriteriaFormData,
         editCriteriaFormData,
+        showPastEvents,
+        setShowPastEvents,
+        eventsPagination,
+        setEventsPagination,
         
         // Form fields
         addEventFields,

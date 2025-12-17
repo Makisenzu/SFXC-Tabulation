@@ -16,10 +16,20 @@ export default function CreateMedalTallyModal({ onClose, onSuccess }) {
 
     const fetchEvents = async () => {
         try {
-            const response = await axios.get('/getEvents');
-            setEvents(response.data);
+            const response = await axios.get('/getEvents?per_page=100&show_past=true');
+            const data = response.data;
+            
+            // Handle paginated response
+            if (data.data && Array.isArray(data.data)) {
+                setEvents(data.data);
+            } else if (Array.isArray(data)) {
+                setEvents(data);
+            } else {
+                setEvents([]);
+            }
         } catch (error) {
             console.error('Error fetching events:', error);
+            setEvents([]);
         }
     };
 

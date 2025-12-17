@@ -27,6 +27,8 @@ export default function CriteriaTable() {
         safeCriterias,
         eventsWithCriteria,
         criteriaByEvent,
+        currentEvents,
+        pastEvents,
         loading,
         error,
         expandedEvents,
@@ -43,6 +45,10 @@ export default function CriteriaTable() {
         editEventFormData,
         addCriteriaFormData,
         editCriteriaFormData,
+        showPastEvents,
+        setShowPastEvents,
+        eventsPagination,
+        setEventsPagination,
         
         // Form fields
         addEventFields,
@@ -179,6 +185,8 @@ export default function CriteriaTable() {
                     </div>
                 </div>
 
+
+
                 {/* Table Content */}
                 <div className="overflow-x-auto">
                     {activeTab === 'events' ? (
@@ -186,7 +194,7 @@ export default function CriteriaTable() {
                         <>
                             {/* Mobile Card View */}
                             <div className="block md:hidden">
-                                {safeEvents.length === 0 ? (
+                                {currentEvents.length === 0 && pastEvents.length === 0 ? (
                                     <div className="px-4 py-6 text-center text-sm text-gray-500">
                                         <div className="flex flex-col items-center justify-center">
                                             <FaCalendarAlt className="w-10 h-10 text-gray-300 mb-2" />
@@ -195,8 +203,10 @@ export default function CriteriaTable() {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="divide-y divide-gray-200">
-                                        {safeEvents.map((item) => (
+                                    <>
+                                        {/* Current/Future Events */}
+                                        <div className="divide-y divide-gray-200">
+                                            {currentEvents.map((item) => (
                                             <div key={item.id} className="p-4 hover:bg-gray-50">
                                                 <div className="flex items-start justify-between mb-3">
                                                     <div className="flex items-start gap-3">
@@ -259,6 +269,93 @@ export default function CriteriaTable() {
                                             </div>
                                         ))}
                                     </div>
+
+                                    {/* Past Events Collapsible Section - Mobile */}
+                                    {pastEvents.length > 0 && (
+                                        <div className="border-t-4 border-gray-300 mt-4">
+                                            <button
+                                                onClick={() => setShowPastEvents(!showPastEvents)}
+                                                className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 flex items-center justify-between transition-colors"
+                                            >
+                                                <span className="text-sm font-semibold text-gray-700">
+                                                    Past Events ({pastEvents.length})
+                                                </span>
+                                                {showPastEvents ? (
+                                                    <FaChevronDown className="w-4 h-4 text-gray-600" />
+                                                ) : (
+                                                    <FaChevronRight className="w-4 h-4 text-gray-600" />
+                                                )}
+                                            </button>
+                                            
+                                            {showPastEvents && (
+                                                <div className="divide-y divide-gray-200 bg-gray-50">
+                                                    {pastEvents.map((item) => (
+                                                        <div key={item.id} className="p-4 hover:bg-gray-100 opacity-75">
+                                                            <div className="flex items-start justify-between mb-3">
+                                                                <div className="flex items-start gap-3">
+                                                                    <div className="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-gray-300 rounded-full">
+                                                                        <FaClock className="w-5 h-5 text-gray-600" />
+                                                                    </div>
+                                                                    <div className="flex-1 min-w-0">
+                                                                        <h3 className="text-sm font-semibold text-gray-700">{item.event_name}</h3>
+                                                                        <p className="text-xs text-gray-500 mt-1">{item.description || 'No description'}</p>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="space-y-2 mb-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs text-gray-500">Type:</span>
+                                                                    {getEventTypeBadge(item.event_type)}
+                                                                </div>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="text-xs text-gray-500">Status:</span>
+                                                                    <div className="flex gap-1">
+                                                                        {getStatusBadge(item.is_active)}
+                                                                        {getArchiveBadge(item.is_archived)}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="text-xs space-y-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FaClock className="w-3 h-3 text-gray-400" />
+                                                                        <span className="text-gray-600">Start: {formatDateWithTime(item.event_start)}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <FaClock className="w-3 h-3 text-gray-400" />
+                                                                        <span className="text-gray-600">End: {formatDateWithTime(item.event_end)}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            <div className="flex flex-wrap gap-2">
+                                                                <button
+                                                                    onClick={() => openAddJudges(item)}
+                                                                    className="flex-1 min-w-[120px] inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                                >
+                                                                    <RiAdminFill className="w-3 h-3 mr-1" />
+                                                                    Judges
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => openEditEvent(item)}
+                                                                    className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded text-xs font-medium text-white bg-blue-600 hover:bg-blue-700"
+                                                                >
+                                                                    <FaEdit className="w-3 h-3 mr-1" />
+                                                                    Edit
+                                                                </button>
+                                                                <button
+                                                                    onClick={() => handleDeleteEvent(item.id)}
+                                                                    className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700"
+                                                                >
+                                                                    <FaTrash className="w-3 h-3" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
                                 )}
                             </div>
 
@@ -284,7 +381,7 @@ export default function CriteriaTable() {
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {safeEvents.length === 0 ? (
+                                {currentEvents.length === 0 && pastEvents.length === 0 ? (
                                     <tr>
                                         <td colSpan="5" className="px-4 py-6 text-center text-sm text-gray-500">
                                             <div className="flex flex-col items-center justify-center">
@@ -295,7 +392,9 @@ export default function CriteriaTable() {
                                         </td>
                                     </tr>
                                 ) : (
-                                    safeEvents.map((item) => (
+                                    <>
+                                        {/* Current/Future Events */}
+                                        {currentEvents.map((item) => (
                                         <tr key={item.id} className="hover:bg-gray-50 transition-colors duration-150">
                                             <td className="px-4 py-3">
                                                 <div className="flex items-center">
@@ -365,7 +464,103 @@ export default function CriteriaTable() {
                                                 </div>
                                             </td>
                                         </tr>
-                                    ))
+                                    ))}
+
+                                    {/* Past Events Collapsible Section - Desktop */}
+                                    {pastEvents.length > 0 && (
+                                        <>
+                                            <tr className="bg-gray-100 border-t-4 border-gray-300">
+                                                <td colSpan="5" className="px-4 py-0">
+                                                    <button
+                                                        onClick={() => setShowPastEvents(!showPastEvents)}
+                                                        className="w-full py-3 flex items-center justify-between hover:bg-gray-200 transition-colors"
+                                                    >
+                                                        <span className="text-sm font-semibold text-gray-700">
+                                                            Past Events ({pastEvents.length})
+                                                        </span>
+                                                        {showPastEvents ? (
+                                                            <FaChevronDown className="w-4 h-4 text-gray-600" />
+                                                        ) : (
+                                                            <FaChevronRight className="w-4 h-4 text-gray-600" />
+                                                        )}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            
+                                            {showPastEvents && pastEvents.map((item) => (
+                                                <tr key={item.id} className="hover:bg-gray-100 bg-gray-50 opacity-75 transition-colors duration-150">
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center">
+                                                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-300 rounded-full">
+                                                                <FaClock className="w-4 h-4 text-gray-600" />
+                                                            </div>
+                                                            <div className="ml-3">
+                                                                <div className="text-sm font-medium text-gray-700">
+                                                                    {item.event_name}
+                                                                </div>
+                                                                <div className="text-sm text-gray-500 line-clamp-1">
+                                                                    {item.description || 'No description'}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        {getEventTypeBadge(item.event_type)}
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="text-sm text-gray-700 space-y-2">
+                                                            <div className="flex items-start space-x-2">
+                                                                <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                                <div>
+                                                                    <div className="font-medium text-gray-600">Start:</div>
+                                                                    <div>{formatDateWithTime(item.event_start)}</div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-start space-x-2">
+                                                                <FaClock className="w-3 h-3 text-gray-400 mt-0.5 flex-shrink-0" />
+                                                                <div>
+                                                                    <div className="font-medium text-gray-600">End:</div>
+                                                                    <div>{formatDateWithTime(item.event_end)}</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex flex-wrap items-center gap-1">
+                                                            {getStatusBadge(item.is_active)}
+                                                            {getArchiveBadge(item.is_archived)}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <div className="flex items-center justify-end space-x-2">
+                                                            <button
+                                                                onClick={() => openAddJudges(item)}
+                                                                className="inline-flex items-center px-2 py-1 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                            >
+                                                                <RiAdminFill className="w-3 h-3 mr-1" />
+                                                                Judges
+                                                            </button>
+                                                            <button
+                                                                onClick={() => openEditEvent(item)}
+                                                                className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors duration-150"
+                                                            >
+                                                                <FaEdit className="w-3 h-3 mr-1" />
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteEvent(item.id)}
+                                                                className="inline-flex items-center px-2 py-1 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-1 focus:ring-red-500 transition-colors duration-150"
+                                                            >
+                                                                <FaTrash className="w-3 h-3 mr-1" />
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </>
+                                    )}
+                                </>
                                 )}
                             </tbody>
                         </table>

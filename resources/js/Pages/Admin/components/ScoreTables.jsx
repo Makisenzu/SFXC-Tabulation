@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { 
     Trophy,
     Medal,
@@ -170,7 +170,7 @@ const ImportScoresModal = ({
                     </div>
 
                     {/* Info Box */}
-                    <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    {/* <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                         <div className="flex gap-3">
                             <div className="flex-shrink-0">
                                 <Award className="w-5 h-5 text-blue-600" />
@@ -187,10 +187,10 @@ const ImportScoresModal = ({
                                 </ul>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Warning Box */}
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                    {/* <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
                         <div className="flex gap-3">
                             <div className="flex-shrink-0">
                                 <Award className="w-5 h-5 text-yellow-600" />
@@ -204,7 +204,7 @@ const ImportScoresModal = ({
                                 </p>
                             </div>
                         </div>
-                    </div>
+                    </div> */}
                 </div>
 
                 {/* Footer */}
@@ -261,10 +261,17 @@ const ScoreTables = () => {
     const dropdownRef = useRef(null);
     const [showImportScoresModal, setShowImportScoresModal] = useState(false);
     const [importingScores, setImportingScores] = useState(false);
+    const [showPastEvents, setShowPastEvents] = useState(false);
+    const [eventsPagination, setEventsPagination] = useState({
+        current_page: 1,
+        last_page: 1,
+        per_page: 10,
+        total: 0
+    });
 
     // Fetch events on component mount
     useEffect(() => {
-        fetchEvents();
+        fetchEvents(1);
     }, []);
 
     // Fetch rounds when event is selected
@@ -371,13 +378,27 @@ const ScoreTables = () => {
         });
     };
 
-    const fetchEvents = async () => {
+    const fetchEvents = async (page = 1) => {
         try {
             setLoading(true);
-            const response = await fetch('/getEvents');
+            // Always fetch all events, we'll filter on the frontend
+            const response = await fetch(`/getEvents?page=${page}&per_page=100&show_past=true`);
             const data = await response.json();
-            const processedEvents = Array.isArray(data) ? data : data?.events || data?.data || [];
-            setEvents(processedEvents);
+            
+            // Handle paginated response
+            if (data.data && Array.isArray(data.data)) {
+                setEvents(data.data);
+                setEventsPagination({
+                    current_page: data.current_page,
+                    last_page: data.last_page,
+                    per_page: data.per_page,
+                    total: data.total
+                });
+            } else {
+                // Fallback for non-paginated response
+                const processedEvents = Array.isArray(data) ? data : data?.events || data?.data || [];
+                setEvents(processedEvents);
+            }
         } catch (error) {
             console.error('Error fetching events:', error);
         } finally {
@@ -1345,12 +1366,54 @@ const ScoreTables = () => {
         printWindow.document.close();
     };
 
+    // Filter events by date
+    const filteredEvents = useMemo(() => {
+        if (showPastEvents) {
+            return events;
+        }
+
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        return events.filter(event => {
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+
+            // Show event if it starts today/future OR ends today/future
+            return eventStart >= today || eventEnd >= today;
+        });
+    }, [events, showPastEvents]);
+
     return (
         <div className="h-screen flex flex-col overflow-hidden">
             {/* Fixed Header Section */}
             <div className="flex-shrink-0 px-4 py-6 bg-gray-50">
                 {/* Filters */}
                 <div className="bg-white rounded-lg shadow-md p-6">
+                    {/* Show Past Events Toggle */}
+                    <div className="mb-4 flex items-center justify-between">
+                        <label className="flex items-center cursor-pointer">
+                            <input
+                                type="checkbox"
+                                checked={showPastEvents}
+                                onChange={(e) => setShowPastEvents(e.target.checked)}
+                                className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm font-medium text-gray-700">
+                                Show past events
+                            </span>
+                        </label>
+                        
+                        {/* Pagination Info */}
+                        {eventsPagination.total > 0 && (
+                            <span className="text-sm text-gray-500">
+                                Showing {filteredEvents.length} of {events.length} events
+                            </span>
+                        )}
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Event Selection */}
                         <div>
@@ -1367,7 +1430,7 @@ const ScoreTables = () => {
                                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                                 <option value="">-- Select Event --</option>
-                                {events.map(event => (
+                                {filteredEvents.map(event => (
                                     <option key={event.id} value={event.id}>
                                         {event.event_name}
                                     </option>

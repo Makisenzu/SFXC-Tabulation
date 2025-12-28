@@ -748,7 +748,7 @@ export function useCriteriaTable() {
     const getRoundBadge = (criteria) => {
         const roundInfo = getRoundNumberFromCriteria(criteria);
         return (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-white-100 text-black-800">
                 {roundInfo}
             </span>
         );

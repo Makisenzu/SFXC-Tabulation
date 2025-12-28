@@ -1483,14 +1483,14 @@ const ScoreTables = () => {
                         <div className="mt-4 flex gap-4">
                             <button
                                 onClick={() => fetchRoundData(selectedEvent, selectedRound)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center"
+                                className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center"
                             >
                                 <RefreshCw className="w-4 h-4 mr-2" />
                                 Refresh Data
                             </button>
                             <button
                                 onClick={printGeneralTabulation}
-                                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center"
+                                className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center"
                             >
                                 <Printer className="w-4 h-4 mr-2" />
                                 Print General Tabulated Result
@@ -1498,7 +1498,7 @@ const ScoreTables = () => {
                             <div className="relative" ref={dropdownRef}>
                                 <button
                                     onClick={() => setShowCriteriaDropdown(!showCriteriaDropdown)}
-                                    className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center"
+                                    className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center"
                                 >
                                     <Award className="w-4 h-4 mr-2" />
                                     Special Awards
@@ -1510,7 +1510,7 @@ const ScoreTables = () => {
                                             <button
                                                 key={criterion.id}
                                                 onClick={() => generateCriteriaAward(criterion.id)}
-                                                className="w-full text-left px-4 py-2 hover:bg-purple-50 transition-colors border-b border-gray-200 last:border-b-0"
+                                                className="w-full text-left px-4 py-2 hover:bg-slate-50 transition-colors border-b border-gray-200 last:border-b-0"
                                             >
                                                 <div className="font-medium text-gray-800">
                                                     {criterion.criteria_name || criterion.criteria_desc}
@@ -1523,7 +1523,7 @@ const ScoreTables = () => {
                             {selectedRound > 1 && (
                                 <button
                                     onClick={() => setShowImportScoresModal(true)}
-                                    className="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors flex items-center"
+                                    className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors flex items-center"
                                 >
                                     <RefreshCw className="w-4 h-4 mr-2" />
                                     Import Scores
@@ -1552,11 +1552,11 @@ const ScoreTables = () => {
                         return (
                             <div key={judge.id} className="bg-white rounded-lg shadow overflow-hidden border border-gray-300">
                                 {/* Judge Header */}
-                                <div className="bg-gray-800 text-white px-6 py-3 flex items-center justify-between">
-                                    <h2 className="text-xl font-bold">{judge.name}</h2>
+                                <div className="bg-white px-6 py-3 flex items-center justify-between border-b border-gray-300">
+                                    <h2 className="text-xl font-bold text-gray-800">{judge.name}</h2>
                                     <button
                                         onClick={() => notifyJudge(judge.id, judge.name)}
-                                        className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
+                                        className="bg-slate-600 hover:bg-slate-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors"
                                         title="Notify judge to enter scores"
                                     >
                                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">

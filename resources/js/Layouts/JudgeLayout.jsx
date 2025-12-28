@@ -378,7 +378,7 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
-                <header className="bg-gradient-to-r from-green-600 to-green-700 shadow-md z-10">
+                <header className="bg-gradient-to-r from-slate-700 to-slate-800 shadow-md z-10">
                     <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button 

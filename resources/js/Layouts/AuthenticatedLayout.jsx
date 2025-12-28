@@ -512,7 +512,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header */}
-                <header className="bg-gradient-to-r from-green-600 to-green-700 shadow-md z-10">
+                <header className="bg-gradient-to-r from-slate-700 to-slate-800 shadow-md z-10">
                     <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button 
@@ -553,7 +553,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                                 </Dropdown.Trigger>
 
                                 <Dropdown.Content>
-                                    <Dropdown.Link href={route('profile.edit')} className="flex items-center hover:text-blue-600">
+                                    <Dropdown.Link href={route('profile.edit')} className="flex items-center hover:text-slate-600">
                                         <FaUserGear className="mr-2" size={16} />
                                         Profile
                                     </Dropdown.Link>
@@ -572,8 +572,8 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
                 </header>
 
                 {/* Main Content */}
-                <main className="flex-1 overflow-y-auto bg-gray-50">
-                    <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+                <main className="flex-1 overflow-y-auto bg-gray-50 w-full">
+                    <div className="h-full w-full p-4">
                         {children}
                     </div>
                 </main>

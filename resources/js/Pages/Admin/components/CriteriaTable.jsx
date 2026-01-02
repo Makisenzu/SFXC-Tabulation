@@ -29,6 +29,8 @@ export default function CriteriaTable() {
         criteriaByEvent,
         currentEvents,
         pastEvents,
+        currentEventsWithCriteria,
+        pastEventsWithCriteria,
         loading,
         error,
         expandedEvents,
@@ -228,7 +230,7 @@ export default function CriteriaTable() {
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs text-gray-500">Status:</span>
                                                         <div className="flex gap-1">
-                                                            {getStatusBadge(item.is_active)}
+                                                            {getStatusBadge(item.is_active, item)}
                                                             {getArchiveBadge(item.is_archived)}
                                                         </div>
                                                     </div>
@@ -311,7 +313,7 @@ export default function CriteriaTable() {
                                                                 <div className="flex items-center gap-2">
                                                                     <span className="text-xs text-gray-500">Status:</span>
                                                                     <div className="flex gap-1">
-                                                                        {getStatusBadge(item.is_active)}
+                                                                        {getStatusBadge(item.is_active, item)}
                                                                         {getArchiveBadge(item.is_archived)}
                                                                     </div>
                                                                 </div>
@@ -434,7 +436,7 @@ export default function CriteriaTable() {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col space-y-1">
-                                                    {getStatusBadge(item.is_active)}
+                                                    {getStatusBadge(item.is_active, item)}
                                                     {getArchiveBadge(item.is_archived)}
                                                 </div>
                                             </td>
@@ -527,7 +529,7 @@ export default function CriteriaTable() {
                                                     </td>
                                                     <td className="px-4 py-3">
                                                         <div className="flex flex-wrap items-center gap-1">
-                                                            {getStatusBadge(item.is_active)}
+                                                            {getStatusBadge(item.is_active, item)}
                                                             {getArchiveBadge(item.is_archived)}
                                                         </div>
                                                     </td>
@@ -568,7 +570,7 @@ export default function CriteriaTable() {
                     ) : (
                         // Criteria Table - Grouped by Event with Scrollable Content
                         <div className="bg-white">
-                            {eventsWithCriteria.length === 0 ? (
+                            {currentEventsWithCriteria.length === 0 && pastEventsWithCriteria.length === 0 ? (
                                 <div className="px-4 py-6 text-center text-sm text-gray-500">
                                     <div className="flex flex-col items-center justify-center">
                                         <FaListAlt className="w-10 h-10 text-gray-300 mb-2" />
@@ -577,8 +579,10 @@ export default function CriteriaTable() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="max-h-[600px] overflow-y-auto">
-                                    {eventsWithCriteria.map((event) => {
+                                <>
+                                    {/* Current Events with Criteria */}
+                                    <div className="max-h-[600px] overflow-y-auto">
+                                        {currentEventsWithCriteria.map((event) => {
                                         const eventCriteria = criteriaByEvent[event.id] || [];
                                         const isExpanded = expandedEvents.has(event.id);
                                         
@@ -611,7 +615,7 @@ export default function CriteriaTable() {
                                                             </div>
                                                         </div>
                                                         <div className="flex items-center space-x-2 flex-shrink-0">
-                                                            {getStatusBadge(event.is_active)}
+                                                            {getStatusBadge(event.is_active, event)}
                                                             {getArchiveBadge(event.is_archived)}
                                                         </div>
                                                     </div>
@@ -753,6 +757,128 @@ export default function CriteriaTable() {
                                         );
                                     })}
                                 </div>
+
+                                {/* Past Events with Criteria - Collapsible */}
+                                {pastEventsWithCriteria.length > 0 && (
+                                    <div className="border-t-4 border-gray-300">
+                                        <button
+                                            onClick={() => setShowPastEvents(!showPastEvents)}
+                                            className="w-full px-4 py-3 bg-gray-100 hover:bg-gray-200 flex items-center justify-between transition-colors"
+                                        >
+                                            <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                                <FaClock className="w-4 h-4" />
+                                                Past Events ({pastEventsWithCriteria.length})
+                                            </span>
+                                            {showPastEvents ? (
+                                                <FaChevronDown className="w-5 h-5 text-gray-600" />
+                                            ) : (
+                                                <FaChevronRight className="w-5 h-5 text-gray-600" />
+                                            )}
+                                        </button>
+
+                                        {showPastEvents && (
+                                            <div className="max-h-[600px] overflow-y-auto bg-gray-50">
+                                                {pastEventsWithCriteria.map((event) => {
+                                                    const eventCriteria = criteriaByEvent[event.id] || [];
+                                                    const isExpanded = expandedEvents.has(event.id);
+                                                    
+                                                    return (
+                                                        <div key={event.id} className="border-b border-gray-200 last:border-b-0 opacity-75">
+                                                            {/* Event Header - Sticky */}
+                                                            <div 
+                                                                className="sticky top-0 z-10 px-4 py-3 bg-gray-200 hover:bg-gray-300 cursor-pointer transition-colors duration-150 shadow-sm"
+                                                                onClick={() => toggleEventExpansion(event.id)}
+                                                            >
+                                                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                                                    <div className="flex items-center flex-1 min-w-0">
+                                                                        {isExpanded ? (
+                                                                            <FaChevronDown className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                                                        ) : (
+                                                                            <FaChevronRight className="w-4 h-4 text-gray-500 mr-2 flex-shrink-0" />
+                                                                        )}
+                                                                        <div className="flex items-center min-w-0 flex-1">
+                                                                            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-400 rounded-full">
+                                                                                <FaClock className="w-4 h-4 text-gray-700" />
+                                                                            </div>
+                                                                            <div className="ml-3 min-w-0">
+                                                                                <div className="text-sm font-medium text-gray-700 truncate">
+                                                                                    {event.event_name}
+                                                                                </div>
+                                                                                <div className="text-xs sm:text-sm text-gray-500">
+                                                                                    {event.event_type} • {eventCriteria.length} criteria
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                    <div className="flex items-center space-x-2 flex-shrink-0">
+                                                                        {getStatusBadge(event.is_active, event)}
+                                                                        {getArchiveBadge(event.is_archived)}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Criteria Table for this Event */}
+                                                            {isExpanded && (
+                                                                <div className="bg-gray-100">
+                                                                    {/* Criteria content same as above but with past event styling */}
+                                                                    <div className="divide-y divide-gray-200">
+                                                                        {eventCriteria.map((criteria) => (
+                                                                            <div key={criteria.id} className="p-4 hover:bg-gray-200">
+                                                                                <div className="flex items-start justify-between mb-3">
+                                                                                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                                                                                        <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-gray-300 rounded-full">
+                                                                                            <FaListAlt className="w-4 h-4 text-gray-600" />
+                                                                                        </div>
+                                                                                        <div className="flex-1 min-w-0">
+                                                                                            <h4 className="text-sm font-semibold text-gray-700 mb-1">{criteria.criteria_desc}</h4>
+                                                                                            <p className="text-xs text-gray-600">{criteria.definition || 'No description provided'}</p>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                                
+                                                                                <div className="space-y-2 mb-3">
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-xs text-gray-500">Percentage:</span>
+                                                                                        {getPercentageDisplay(criteria.percentage)}
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-xs text-gray-500">Round:</span>
+                                                                                        {getRoundBadge(criteria)}
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2">
+                                                                                        <span className="text-xs text-gray-500">Status:</span>
+                                                                                        {getStatusBadge(criteria.is_active)}
+                                                                                    </div>
+                                                                                </div>
+                                                                                
+                                                                                <div className="flex gap-2">
+                                                                                    <button
+                                                                                        onClick={() => openEditCriteria(criteria)}
+                                                                                        className="flex-1 inline-flex items-center justify-center px-3 py-2 border border-gray-300 rounded text-xs font-medium text-gray-700 bg-white hover:bg-gray-50"
+                                                                                    >
+                                                                                        <FaEdit className="w-3 h-3 mr-1" />
+                                                                                        Edit
+                                                                                    </button>
+                                                                                    <button
+                                                                                        onClick={() => handleDeleteCriteria(criteria.id)}
+                                                                                        className="inline-flex items-center justify-center px-3 py-2 border border-transparent rounded text-xs font-medium text-white bg-red-600 hover:bg-red-700"
+                                                                                    >
+                                                                                        <FaTrash className="w-3 h-3" />
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                </>
                             )}
                         </div>
                     )}

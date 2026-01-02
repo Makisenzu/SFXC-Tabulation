@@ -32,6 +32,7 @@ export default function RoundManagementTable() {
     const [selectedEventForRound, setSelectedEventForRound] = useState(null);
     const [expandedEvents, setExpandedEvents] = useState(new Set());
     const [selectedRounds, setSelectedRounds] = useState({});
+    const [showPastEvents, setShowPastEvents] = useState(false);
 
     // Fetch data
     useEffect(() => {
@@ -114,6 +115,31 @@ export default function RoundManagementTable() {
         return safeEvents.filter(event => contestantsByEvent[event.id]?.length > 0);
     }, [safeEvents, contestantsByEvent]);
 
+    // Separate current and past events
+    const { currentEvents, pastEvents } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const current = [];
+        const past = [];
+        
+        eventsWithContestants.forEach(event => {
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+
+            // Event is current if it starts today/future OR ends today/future
+            if (eventStart >= today || eventEnd >= today) {
+                current.push(event);
+            } else {
+                past.push(event);
+            }
+        });
+        
+        return { currentEvents: current, pastEvents: past };
+    }, [eventsWithContestants]);
+
     const getContestantsForSelectedRound = (eventId) => {
         const selectedRound = selectedRounds[eventId];
         if (!selectedRound) return [];
@@ -153,7 +179,7 @@ export default function RoundManagementTable() {
     };
 
     const expandAllEvents = () => {
-        const allEventIds = new Set(eventsWithContestants.map(event => event.id));
+        const allEventIds = new Set([...currentEvents, ...(showPastEvents ? pastEvents : [])].map(event => event.id));
         setExpandedEvents(allEventIds);
     };
 
@@ -596,7 +622,27 @@ export default function RoundManagementTable() {
         );
     };
 
-    const getStatusBadge = (isActive) => {
+    const getStatusBadge = (isActive, event = null) => {
+        // If event is provided, check if it's a past event
+        if (event) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+            
+            // If event has ended (past event), always show as inactive
+            if (eventStart < today && eventEnd < today) {
+                return (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-600">
+                        Inactive
+                    </span>
+                );
+            }
+        }
+        
         return isActive ? (
             <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-green-50 text-green-700">
                 Active
@@ -722,7 +768,7 @@ export default function RoundManagementTable() {
 
                 {/* Content */}
                 <div className="divide-y divide-gray-100">
-                    {eventsWithContestants.length === 0 ? (
+                    {currentEvents.length === 0 && pastEvents.length === 0 ? (
                         <div className="px-6 py-20 text-center">
                             <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                                 <User className="w-10 h-10 text-gray-400" />
@@ -731,7 +777,9 @@ export default function RoundManagementTable() {
                             <p className="text-gray-500">Add contestants to events to manage rounds</p>
                         </div>
                     ) : (
-                        eventsWithContestants.map((event) => {
+                        <>
+                            {/* Current/Future Events */}
+                            {currentEvents.map((event) => {
                             const eventRounds = rounds[event.id] || [];
                             const isExpanded = expandedEvents.has(event.id);
                             const selectedRound = selectedRounds[event.id];
@@ -769,7 +817,7 @@ export default function RoundManagementTable() {
                                             </div>
                                             <div className="flex items-center gap-2">
                                                 {getEventTypeBadge(event.event_type)}
-                                                {getStatusBadge(event.is_active)}
+                                                {getStatusBadge(event.is_active, event)}
                                             </div>
                                         </div>
 
@@ -926,7 +974,232 @@ export default function RoundManagementTable() {
                                     )}
                                 </div>
                             );
-                        })
+                        })}
+
+                        {/* Past Events Collapsible Section */}
+                        {pastEvents.length > 0 && (
+                            <div className="border-t-4 border-gray-300">
+                                <button
+                                    onClick={() => setShowPastEvents(!showPastEvents)}
+                                    className="w-full px-6 py-4 bg-gray-100 hover:bg-gray-200 flex items-center justify-between transition-colors"
+                                >
+                                    <span className="text-sm font-semibold text-gray-700 flex items-center gap-2">
+                                        <Calendar className="w-4 h-4" />
+                                        Past Events ({pastEvents.length})
+                                    </span>
+                                    {showPastEvents ? (
+                                        <ChevronDown className="w-5 h-5 text-gray-600" />
+                                    ) : (
+                                        <ChevronRight className="w-5 h-5 text-gray-600" />
+                                    )}
+                                </button>
+                                
+                                {showPastEvents && (
+                                    <div className="divide-y divide-gray-100 bg-gray-50">
+                                        {pastEvents.map((event) => {
+                                            const eventRounds = rounds[event.id] || [];
+                                            const isExpanded = expandedEvents.has(event.id);
+                                            const selectedRound = selectedRounds[event.id];
+                                            const roundContestantsList = selectedRound ? getContestantsForSelectedRound(event.id) : [];
+                                            
+                                            return (
+                                                <div key={event.id} className="opacity-75">
+                                                    {/* Event Header */}
+                                                    <div 
+                                                        className="px-6 py-4 hover:bg-gray-100 cursor-pointer transition-colors"
+                                                        onClick={() => toggleEventExpansion(event.id)}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-4 flex-1">
+                                                                <div className={`p-2 rounded-lg transition-all ${isExpanded ? 'bg-gray-300' : 'bg-gray-200'}`}>
+                                                                    {isExpanded ? (
+                                                                        <ChevronDown className="w-5 h-5 text-gray-600" />
+                                                                    ) : (
+                                                                        <ChevronRight className="w-5 h-5 text-gray-600" />
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex items-center gap-4 flex-1">
+                                                                    <div className="p-3 bg-gray-300 rounded-xl">
+                                                                        <Calendar className="w-5 h-5 text-gray-600" />
+                                                                    </div>
+                                                                    <div>
+                                                                        <div className="text-base font-semibold text-gray-700">
+                                                                            {event.event_name}
+                                                                        </div>
+                                                                        <div className="text-sm text-gray-500 mt-0.5">
+                                                                            {contestantsByEvent[event.id]?.length || 0} contestants registered
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {getEventTypeBadge(event.event_type)}
+                                                                {getStatusBadge(event.is_active)}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Round Controls */}
+                                                        {isExpanded && (
+                                                            <div className="mt-5 pt-5 border-t border-gray-200" onClick={(e) => e.stopPropagation()}>
+                                                                <div className="flex items-center justify-between gap-4">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <label className="text-sm font-semibold text-gray-700">
+                                                                            Round:
+                                                                        </label>
+                                                                        <select
+                                                                            value={selectedRound || ''}
+                                                                            onChange={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleRoundChange(event.id, e.target.value);
+                                                                            }}
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                            className="px-4 py-2 bg-white border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                                                                        >
+                                                                            <option value="">Select Round</option>
+                                                                            {eventRounds.map(round => (
+                                                                                <option key={round.round_no} value={round.round_no}>
+                                                                                    Round {round.round_no} {round.is_active ? '(Active)' : ''}
+                                                                                </option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                openAddContestantRound(event);
+                                                                            }}
+                                                                            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm"
+                                                                        >
+                                                                            <Plus className="w-4 h-4" />
+                                                                            Add Contestants
+                                                                        </button>
+                                                                        {selectedRound && (
+                                                                            <>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handleSetActiveRound(event.id, selectedRound);
+                                                                                    }}
+                                                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-50 text-green-700 rounded-xl text-sm font-semibold hover:bg-green-100 transition-colors"
+                                                                                >
+                                                                                    <Play className="w-4 h-4" />
+                                                                                    Set Active
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        handlePopulateTabulationCriteria(event.id, selectedRound);
+                                                                                    }}
+                                                                                    className="inline-flex items-center gap-2 px-4 py-2 bg-purple-50 text-purple-700 rounded-xl text-sm font-semibold hover:bg-purple-100 transition-colors"
+                                                                                >
+                                                                                    <Database className="w-4 h-4" />
+                                                                                    Populate for Judges
+                                                                                </button>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Contestants List */}
+                                                                {selectedRound && (
+                                                                    <div className="mt-6 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                                                                        <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                                                                            <h4 className="text-sm font-semibold text-gray-900">
+                                                                                Contestants in Round {selectedRound}
+                                                                                <span className="ml-2 text-gray-500 font-normal">
+                                                                                    ({roundContestantsList.length})
+                                                                                </span>
+                                                                            </h4>
+                                                                        </div>
+                                                                        
+                                                                        <div className="overflow-x-auto">
+                                                                            <table className="min-w-full divide-y divide-gray-200">
+                                                                                <thead className="bg-gray-50">
+                                                                                    <tr>
+                                                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                            Sequence
+                                                                                        </th>
+                                                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                            Photo
+                                                                                        </th>
+                                                                                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                            Contestant Name
+                                                                                        </th>
+                                                                                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                                                            Actions
+                                                                                        </th>
+                                                                                    </tr>
+                                                                                </thead>
+                                                                                <tbody className="bg-white divide-y divide-gray-200">
+                                                                                    {roundContestantsList.length === 0 ? (
+                                                                                        <tr>
+                                                                                            <td colSpan="4" className="px-4 py-12 text-center">
+                                                                                                <div className="flex flex-col items-center justify-center">
+                                                                                                    <User className="w-12 h-12 text-gray-300 mb-3" />
+                                                                                                    <p className="text-gray-500">No contestants in this round</p>
+                                                                                                    <p className="text-sm text-gray-400 mt-1">Click "Add Contestants" to add contestants</p>
+                                                                                                </div>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    ) : (
+                                                                                        roundContestantsList.map((contestant) => (
+                                                                                            <tr key={contestant.id} className="hover:bg-gray-50">
+                                                                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                                                                    <span className="inline-flex items-center justify-center w-8 h-8 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                                                                                                        {contestant.sequence_no}
+                                                                                                    </span>
+                                                                                                </td>
+                                                                                                <td className="px-4 py-4 whitespace-nowrap">
+                                                                                                    {contestant.photo_path ? (
+                                                                                                        <img
+                                                                                                            src={`/storage/${contestant.photo_path}`}
+                                                                                                            alt={contestant.contestant_name}
+                                                                                                            className="h-12 w-12 rounded-full object-cover border-2 border-gray-200"
+                                                                                                        />
+                                                                                                    ) : (
+                                                                                                        <div className="h-12 w-12 rounded-full bg-gray-200 flex items-center justify-center">
+                                                                                                            <ImageIcon className="h-6 w-6 text-gray-400" />
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                </td>
+                                                                                                <td className="px-4 py-4">
+                                                                                                    <div className="text-sm font-semibold text-gray-900">
+                                                                                                        {contestant.contestant_name}
+                                                                                                    </div>
+                                                                                                </td>
+                                                                                                <td className="px-4 py-4 whitespace-nowrap text-right">
+                                                                                                    <button
+                                                                                                        onClick={(e) => {
+                                                                                                            e.stopPropagation();
+                                                                                                            handleRemoveContestant(event.id, selectedRound, contestant.id);
+                                                                                                        }}
+                                                                                                        className="inline-flex items-center gap-2 px-3 py-2 bg-red-50 text-red-700 rounded-lg text-sm font-semibold hover:bg-red-100 transition-colors"
+                                                                                                    >
+                                                                                                        <Trash2 className="w-4 h-4" />
+                                                                                                        Remove
+                                                                                                    </button>
+                                                                                                </td>
+                                                                                            </tr>
+                                                                                        ))
+                                                                                    )}
+                                                                                </tbody>
+                                                                            </table>
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                        </>
                     )}
                 </div>
             </div>

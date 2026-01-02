@@ -512,7 +512,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col overflow-hidden">
                 {/* Header */}
-                <header className="bg-gradient-to-r from-slate-700 to-slate-800 shadow-md z-10">
+                <header className="bg-gradient-to-r from-green-700 to-green-800 shadow-md z-10">
                     <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
                         <div className="flex items-center gap-4">
                             <button 

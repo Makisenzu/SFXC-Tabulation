@@ -28,11 +28,9 @@ Route::get('/archives/{eventId}', [PublicController::class, 'archiveDetails'])->
 // API routes for real-time updates
 Route::get('/api/medal-tallies', [PublicController::class, 'getMedalTallyData']);
 
-// Settings API routes (admin only)
-Route::middleware(['auth'])->group(function () {
-    Route::get('/api/settings/logo', [SettingsController::class, 'getLogo']);
-    Route::post('/api/settings/logo', [SettingsController::class, 'uploadLogo']);
-});
+// Settings API routes (admin only) - excluded from Inertia middleware
+Route::get('/api/settings/logo', [SettingsController::class, 'getLogo'])->middleware(['auth']);
+Route::post('/api/settings/logo', [SettingsController::class, 'uploadLogo'])->middleware(['auth']);
 
 Route::get('/admin', function() {
     if (Auth::check()) {

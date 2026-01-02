@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 use PhpParser\Node\Stmt\TraitUseAdaptation\Alias;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -28,6 +29,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/sync/receive',
             '/api/sync/receive'
         ]);
+    })
+    ->withSchedule(function (Schedule $schedule) {
+        // Run daily at midnight to update past events to inactive
+        $schedule->command('events:update-past-status')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

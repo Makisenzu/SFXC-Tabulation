@@ -151,6 +151,31 @@ export function useCriteriaTable() {
         return { currentEvents: current, pastEvents: past };
     }, [safeEvents]);
 
+    // Separate current/past events with criteria for Criteria tab
+    const { currentEventsWithCriteria, pastEventsWithCriteria } = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+
+        const current = [];
+        const past = [];
+
+        eventsWithCriteria.forEach(event => {
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+
+            // Event is current if it starts today/future OR ends today/future
+            if (eventStart >= today || eventEnd >= today) {
+                current.push(event);
+            } else {
+                past.push(event);
+            }
+        });
+
+        return { currentEventsWithCriteria: current, pastEventsWithCriteria: past };
+    }, [eventsWithCriteria]);
+
     const toggleEventExpansion = (eventId) => {
         const newExpanded = new Set(expandedEvents);
         if (newExpanded.has(eventId)) {
@@ -162,7 +187,10 @@ export function useCriteriaTable() {
     };
 
     const expandAllEvents = () => {
-        const allEventIds = new Set(eventsWithCriteria.map(event => event.id));
+        const eventsToExpand = activeTab === 'criterias' 
+            ? [...currentEventsWithCriteria, ...(showPastEvents ? pastEventsWithCriteria : [])]
+            : [...currentEvents, ...(showPastEvents ? pastEvents : [])];
+        const allEventIds = new Set(eventsToExpand.map(event => event.id));
         setExpandedEvents(allEventIds);
     };
 
@@ -325,7 +353,7 @@ export function useCriteriaTable() {
             name: 'event_id',
             label: 'Event',
             type: 'select',
-            options: safeEvents
+            options: currentEvents
                 .filter(event => event.is_active)
                 .map(event => ({
                     value: event.id,
@@ -375,7 +403,7 @@ export function useCriteriaTable() {
             ],
             required: true
         }
-    ]), [safeEvents]);
+    ]), [currentEvents]);
 
     const editCriteriaFields = useMemo(() => ([
         {
@@ -693,7 +721,27 @@ export function useCriteriaTable() {
     };
 
     // Badge components
-    const getStatusBadge = (isActive) => {
+    const getStatusBadge = (isActive, event = null) => {
+        // If event is provided, check if it's a past event
+        if (event) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const eventStart = new Date(event.event_start);
+            const eventEnd = new Date(event.event_end);
+            eventStart.setHours(0, 0, 0, 0);
+            eventEnd.setHours(0, 0, 0, 0);
+            
+            // If event has ended (past event), always show as inactive
+            if (eventStart < today && eventEnd < today) {
+                return (
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        Inactive
+                    </span>
+                );
+            }
+        }
+        
         return isActive ? (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                 Active
@@ -775,6 +823,8 @@ export function useCriteriaTable() {
         criteriaByEvent,
         currentEvents,
         pastEvents,
+        currentEventsWithCriteria,
+        pastEventsWithCriteria,
         loading,
         error,
         expandedEvents,

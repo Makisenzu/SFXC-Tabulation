@@ -15,6 +15,23 @@ class HandleInertiaRequests extends Middleware
     protected $rootView = 'app';
 
     /**
+     * Handle the incoming request.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  callable  $next
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    public function handle(Request $request, $next)
+    {
+        // Skip Inertia middleware for API routes
+        if ($request->is('api/*')) {
+            return $next($request);
+        }
+
+        return parent::handle($request, $next);
+    }
+
+    /**
      * Determine the current asset version.
      */
     public function version(Request $request): ?string
@@ -35,6 +52,24 @@ class HandleInertiaRequests extends Middleware
                 'user' => $request->user(),
             ],
             'appEnv' => config('app.env'),
+            'appLogo' => $this->getAppLogo(),
         ];
+    }
+
+    /**
+     * Get the application logo path
+     */
+    private function getAppLogo(): ?string
+    {
+        $extensions = ['png', 'jpg', 'jpeg', 'gif'];
+        
+        foreach ($extensions as $ext) {
+            $path = 'logos/app-logo.' . $ext;
+            if (\Storage::disk('public')->exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }

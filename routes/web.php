@@ -117,6 +117,10 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
         return Inertia::render('Admin/MedalDashboard');
     })->name('admin.medal');
 
+    Route::get('/admin/archived-medal-tallies', function () {
+        return Inertia::render('Admin/ArchivedMedalTallies');
+    })->name('admin.archived-medals');
+
     Route::get('/getUsers', [PermissionController::class, 'getUser']);
 
     Route::post('/add/newUser', [PermissionController::class, 'addUser']);
@@ -202,11 +206,14 @@ Route::middleware(['auth', 'role:Admin'])->group(function () {
 
     //medals
     Route::get('/getMedalTallies', [MedalController::class, 'getMedalTallies']);
+    Route::get('/getArchivedMedalTallies', [MedalController::class, 'getArchivedMedalTallies']);
     Route::get('/getMedalTally/{id}', [MedalController::class, 'getMedalTally']);
     Route::post('/createMedalTally', [MedalController::class, 'createMedalTally']);
     Route::post('/updateMedalScore', [MedalController::class, 'updateScore']);
     Route::delete('/deleteMedalScore/{id}', [MedalController::class, 'deleteScore']);
     Route::delete('/deleteMedalTally/{id}', [MedalController::class, 'deleteMedalTally']);
+    Route::post('/archiveMedalTally/{id}', [MedalController::class, 'archiveMedalTally']);
+    Route::post('/unarchiveMedalTally/{id}', [MedalController::class, 'unarchiveMedalTally']);
     Route::get('/printFullMedalTally/{id}', [MedalController::class, 'printFullTally']);
     Route::get('/printCueCards/{id}', [MedalController::class, 'printCueCards']);
 

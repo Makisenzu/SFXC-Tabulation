@@ -8,7 +8,14 @@ class MedalTally extends Model
 {
     protected $fillable = [
         'id',
-        'tally_title'
+        'tally_title',
+        'is_archived',
+        'archived_at'
+    ];
+
+    protected $casts = [
+        'is_archived' => 'boolean',
+        'archived_at' => 'datetime'
     ];
 
     public function events() {

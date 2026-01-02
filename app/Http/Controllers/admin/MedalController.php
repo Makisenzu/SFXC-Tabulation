@@ -18,7 +18,20 @@ class MedalController extends Controller
         $perPage = $request->input('per_page', 10);
         
         $tallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', false)
             ->orderBy('created_at', 'desc')
+            ->paginate($perPage);
+        
+        return response()->json($tallies);
+    }
+
+    public function getArchivedMedalTallies(Request $request)
+    {
+        $perPage = $request->input('per_page', 10);
+        
+        $tallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', true)
+            ->orderBy('archived_at', 'desc')
             ->paginate($perPage);
         
         return response()->json($tallies);
@@ -128,6 +141,32 @@ class MedalController extends Controller
         
         return response()->json([
             'message' => 'Medal Tally deleted successfully'
+        ]);
+    }
+
+    public function archiveMedalTally($id)
+    {
+        $tally = MedalTally::findOrFail($id);
+        $tally->update([
+            'is_archived' => true,
+            'archived_at' => now()
+        ]);
+        
+        return response()->json([
+            'message' => 'Medal Tally archived successfully'
+        ]);
+    }
+
+    public function unarchiveMedalTally($id)
+    {
+        $tally = MedalTally::findOrFail($id);
+        $tally->update([
+            'is_archived' => false,
+            'archived_at' => null
+        ]);
+        
+        return response()->json([
+            'message' => 'Medal Tally unarchived successfully'
         ]);
     }
 

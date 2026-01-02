@@ -19,8 +19,18 @@ class RoundController extends Controller
      * Display a listing of the resource.
      */
 
-    public function getEvents(){
-        $events = Event::all();
+    public function getEvents(Request $request){
+        $showPast = filter_var($request->input('show_past', false), FILTER_VALIDATE_BOOLEAN);
+        $today = now()->startOfDay();
+
+        $query = Event::query();
+
+        // Filter by date: show events that start today or in the future
+        if (!$showPast) {
+            $query->where('event_start', '>=', $today);
+        }
+
+        $events = $query->orderBy('event_start', 'desc')->get();
 
         return response()->json($events);
     }

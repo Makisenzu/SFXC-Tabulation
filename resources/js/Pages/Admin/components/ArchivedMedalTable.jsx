@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { FaMedal, FaPlus, FaTrash, FaEye, FaArchive } from 'react-icons/fa';
-import CreateMedalTallyModal from './CreateMedalTallyModal';
+import { FaArchive, FaEye, FaUndo, FaArrowLeft } from 'react-icons/fa';
 import ViewMedalTallyModal from './ViewMedalTallyModal';
 
-export default function MedalTable() {
+export default function ArchivedMedalTable() {
     const [tallies, setTallies] = useState([]);
     const [pagination, setPagination] = useState({
         current_page: 1,
@@ -13,7 +12,6 @@ export default function MedalTable() {
         total: 0
     });
     const [loading, setLoading] = useState(true);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedTally, setSelectedTally] = useState(null);
 
@@ -23,7 +21,7 @@ export default function MedalTable() {
 
     const fetchTallies = async (page = 1) => {
         try {
-            const response = await axios.get('/getMedalTallies', {
+            const response = await axios.get('/getArchivedMedalTallies', {
                 params: { page, per_page: pagination.per_page }
             });
             setTallies(response.data.data);
@@ -35,29 +33,18 @@ export default function MedalTable() {
             });
             setLoading(false);
         } catch (error) {
-            console.error('Error fetching medal tallies:', error);
+            console.error('Error fetching archived medal tallies:', error);
             setLoading(false);
         }
     };
 
-    const handleDelete = async (id) => {
-        if (confirm('Are you sure you want to delete this medal tally?')) {
+    const handleUnarchive = async (id) => {
+        if (confirm('Are you sure you want to unarchive this medal tally?')) {
             try {
-                await axios.delete(`/deleteMedalTally/${id}`);
+                await axios.post(`/unarchiveMedalTally/${id}`);
                 fetchTallies();
             } catch (error) {
-                console.error('Error deleting medal tally:', error);
-            }
-        }
-    };
-
-    const handleArchive = async (id) => {
-        if (confirm('Are you sure you want to archive this medal tally?')) {
-            try {
-                await axios.post(`/archiveMedalTally/${id}`);
-                fetchTallies();
-            } catch (error) {
-                console.error('Error archiving medal tally:', error);
+                console.error('Error unarchiving medal tally:', error);
             }
         }
     };
@@ -72,74 +59,89 @@ export default function MedalTable() {
         }
     };
 
+    const formatDate = (dateString) => {
+        return new Date(dateString).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
     if (loading) {
-        return <div className="text-center py-8">Loading medal tallies...</div>;
+        return <div className="text-center py-8">Loading archived medal tallies...</div>;
     }
 
     return (
         <div className="bg-white rounded-lg shadow">
             <div className="p-4 sm:p-6 border-b border-gray-200">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Medal Tally Management</h2>
-                    <div className="flex gap-2 w-full sm:w-auto">
-                        <a
-                            href="/admin/archived-medal-tallies"
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm sm:text-base justify-center"
-                        >
-                            <FaArchive /> View Archived
-                        </a>
-                        <button
-                            onClick={() => setShowCreateModal(true)}
-                            className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base justify-center"
-                        >
-                            <FaPlus /> Create Medal Tally
-                        </button>
+                    <div>
+                        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Archived Medal Tallies</h2>
+                        <p className="text-sm text-gray-500 mt-1">View past medal tallies and their complete results</p>
                     </div>
+                    <a
+                        href="/admin/medal-tally"
+                        className="flex items-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto justify-center"
+                    >
+                        <FaArrowLeft /> Back to Active
+                    </a>
                 </div>
             </div>
 
-            <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Tally Title
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
-                                Competitions
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Participants
-                            </th>
-                            <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                Actions
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {tallies.length === 0 ? (
+            {tallies.length === 0 ? (
+                <div className="p-12 text-center">
+                    <FaArchive className="mx-auto text-gray-300 mb-4" size={64} />
+                    <p className="text-gray-500 text-lg">No archived medal tallies yet</p>
+                    <p className="text-gray-400 text-sm mt-2">
+                        Medal tallies that are archived will appear here
+                    </p>
+                </div>
+            ) : (
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
                             <tr>
-                                <td colSpan="4" className="px-3 sm:px-6 py-4 text-center text-gray-500 text-sm">
-                                    No medal tallies found
-                                </td>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Tally Title
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
+                                    Competitions
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Participants
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Archived Date
+                                </th>
+                                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Actions
+                                </th>
                             </tr>
-                        ) : (
-                            tallies.map((tally) => (
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {tallies.map((tally) => (
                                 <tr key={tally.id} className="hover:bg-gray-50">
                                     <td className="px-3 sm:px-6 py-4 text-sm font-medium text-gray-900">
-                                        <div className="font-semibold">{tally.tally_title}</div>
-                                        <div className="md:hidden mt-1">
-                                            <div className="flex flex-wrap gap-1">
-                                                {tally.events?.slice(0, 2).map((event, idx) => (
-                                                    <span key={idx} className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
-                                                        {event.event_name}
-                                                    </span>
-                                                ))}
-                                                {tally.events?.length > 2 && (
-                                                    <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
-                                                        +{tally.events.length - 2} more
-                                                    </span>
-                                                )}
+                                        <div className="flex items-center">
+                                            <FaArchive className="text-gray-400 mr-2" />
+                                            <div>
+                                                <div className="font-semibold">{tally.tally_title}</div>
+                                                <div className="md:hidden mt-1">
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {tally.events?.slice(0, 2).map((event, idx) => (
+                                                            <span key={idx} className="inline-block px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                                                                {event.event_name}
+                                                            </span>
+                                                        ))}
+                                                        {tally.events?.length > 2 && (
+                                                            <span className="inline-block px-2 py-1 text-xs bg-gray-100 text-gray-600 rounded">
+                                                                +{tally.events.length - 2} more
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </td>
@@ -157,37 +159,33 @@ export default function MedalTable() {
                                             {tally.participants?.length || 0}
                                         </span>
                                     </td>
+                                    <td className="px-3 sm:px-6 py-4 text-sm text-gray-500">
+                                        {formatDate(tally.archived_at)}
+                                    </td>
                                     <td className="px-3 sm:px-6 py-4 text-sm">
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => handleView(tally)}
                                                 className="text-green-600 hover:text-green-900 p-2"
-                                                title="View & Edit Scores"
+                                                title="View Tally"
                                             >
                                                 <FaEye size={16} />
                                             </button>
                                             <button
-                                                onClick={() => handleArchive(tally.id)}
+                                                onClick={() => handleUnarchive(tally.id)}
                                                 className="text-blue-600 hover:text-blue-900 p-2"
-                                                title="Archive"
+                                                title="Unarchive"
                                             >
-                                                <FaArchive size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => handleDelete(tally.id)}
-                                                className="text-red-600 hover:text-red-900 p-2"
-                                                title="Delete"
-                                            >
-                                                <FaTrash size={16} />
+                                                <FaUndo size={16} />
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            )}
 
             {/* Pagination */}
             {pagination.last_page > 1 && (
@@ -243,16 +241,6 @@ export default function MedalTable() {
                 </div>
             )}
 
-            {showCreateModal && (
-                <CreateMedalTallyModal
-                    onClose={() => setShowCreateModal(false)}
-                    onSuccess={() => {
-                        fetchTallies();
-                        setShowCreateModal(false);
-                    }}
-                />
-            )}
-
             {showViewModal && selectedTally && (
                 <ViewMedalTallyModal
                     tally={selectedTally}
@@ -263,6 +251,7 @@ export default function MedalTable() {
                     onUpdate={() => {
                         fetchTallies();
                     }}
+                    isArchived={true}
                 />
             )}
         </div>

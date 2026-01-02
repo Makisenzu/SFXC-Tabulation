@@ -22,17 +22,14 @@ class EventController extends Controller
     }
     public function showEvents(Request $request) {
         $perPage = $request->input('per_page', 10);
-        $showPast = $request->input('show_past', false);
+        $showPast = filter_var($request->input('show_past', false), FILTER_VALIDATE_BOOLEAN);
         $today = now()->startOfDay();
 
         $query = Event::query();
 
-        // Filter by date: show today and future events by default
+        // Filter by date: show events that start today or in the future
         if (!$showPast) {
-            $query->where(function($q) use ($today) {
-                $q->where('event_start', '>=', $today)
-                  ->orWhere('event_end', '>=', $today);
-            });
+            $query->where('event_start', '>=', $today);
         }
 
         // Order by event start date (newest first)

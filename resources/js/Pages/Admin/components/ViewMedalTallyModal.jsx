@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FaTimes, FaMedal, FaPrint } from 'react-icons/fa';
 
-export default function ViewMedalTallyModal({ tally, onClose, onUpdate }) {
+export default function ViewMedalTallyModal({ tally, onClose, onUpdate, isArchived = false }) {
     const [scores, setScores] = useState({});
     const [loading, setLoading] = useState(false);
 
@@ -198,11 +198,20 @@ export default function ViewMedalTallyModal({ tally, onClose, onUpdate }) {
                     </div>
 
                     {/* Scoring Instructions */}
-                    <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-xs sm:text-sm text-blue-800">
-                            <strong>How to score:</strong> Enter 1 for Bronze, 2 for Silver, or 3 for Gold. Click "+ Add Medal" to give multiple medals to same participant. Scores are saved automatically.
-                        </p>
-                    </div>
+                    {!isArchived && (
+                        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                            <p className="text-xs sm:text-sm text-blue-800">
+                                <strong>How to score:</strong> Enter 1 for Bronze, 2 for Silver, or 3 for Gold. Click "+ Add Medal" to give multiple medals to same participant. Scores are saved automatically.
+                            </p>
+                        </div>
+                    )}
+                    {isArchived && (
+                        <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                            <p className="text-xs sm:text-sm text-gray-600">
+                                <strong>Archived Tally:</strong> This is a read-only view of the archived medal tally.
+                            </p>
+                        </div>
+                    )}
 
                     {/* Scrollable Scoring Table */}
                     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -243,7 +252,8 @@ export default function ViewMedalTallyModal({ tally, onClose, onUpdate }) {
                                                                             max="3"
                                                                             value={scoreObj.score || ''}
                                                                             onChange={(e) => handleScoreChange(event.id, participant.id, idx, e.target.value)}
-                                                                            className="w-14 sm:w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                                                            disabled={isArchived}
+                                                                            className="w-14 sm:w-16 px-2 py-1 text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                                             placeholder="-"
                                                                         />
                                                                         {medal && (
@@ -257,7 +267,7 @@ export default function ViewMedalTallyModal({ tally, onClose, onUpdate }) {
                                                                     </div>
                                                                 );
                                                             })}
-                                                            {(!hasScores || participantScores.every(s => s.score)) && (
+                                                            {(!hasScores || participantScores.every(s => s.score)) && !isArchived && (
                                                                 <button
                                                                     onClick={() => addMedalSlot(event.id, participant.id)}
                                                                     className="text-xs text-blue-600 hover:text-blue-800 font-medium mt-1"

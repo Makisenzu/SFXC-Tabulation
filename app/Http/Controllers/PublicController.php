@@ -30,13 +30,73 @@ class PublicController extends Controller
 
     public function medalTally()
     {
-        // Get all medal tallies
+        // Get active (non-archived) medal tallies
         $tallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', false)
             ->orderBy('created_at', 'desc')
             ->get();
 
         return inertia('Public/MedalTally', [
             'tallies' => $tallies
+        ]);
+    }
+
+    public function archivedMedalTallies()
+    {
+        // Get archived medal tallies
+        $tallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', true)
+            ->orderBy('archived_at', 'desc')
+            ->get();
+
+        return inertia('Public/ArchivedMedalTallies', [
+            'tallies' => $tallies
+        ]);
+    }
+
+    public function archivedMedalTallyDetails($id)
+    {
+        $tally = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', true)
+            ->findOrFail($id);
+
+        return inertia('Public/ArchivedMedalTallyDetails', [
+            'tally' => $tally
+        ]);
+    }
+
+    public function archivedMedalTallyEventDetails($tallyId, $eventId)
+    {
+        $tally = MedalTally::where('is_archived', true)->findOrFail($tallyId);
+        $event = Event::findOrFail($eventId);
+        
+        // Get scores for this event in this tally
+        $scores = $tally->scores()
+            ->where('event_id', $eventId)
+            ->with(['participant', 'event'])
+            ->orderBy('score', 'desc')
+            ->get();
+        
+        // Group scores by participant
+        $results = [];
+        foreach ($scores as $score) {
+            $participantName = $score->participant->participant_name;
+            if (!isset($results[$participantName])) {
+                $results[$participantName] = [
+                    'participant' => $participantName,
+                    'medals' => []
+                ];
+            }
+            $results[$participantName]['medals'][] = [
+                'type' => $score->medal_type,
+                'score' => $score->score
+            ];
+        }
+
+        return inertia('Public/ArchivedMedalTallyEventDetails', [
+            'tally' => $tally,
+            'event' => $event,
+            'results' => array_values($results)
         ]);
     }
 
@@ -55,8 +115,15 @@ class PublicController extends Controller
             ->orderBy('updated_at', 'desc')
             ->get();
 
+        // Get archived medal tallies
+        $archivedMedalTallies = MedalTally::with(['events', 'participants', 'scores.event', 'scores.participant'])
+            ->where('is_archived', true)
+            ->orderBy('archived_at', 'desc')
+            ->get();
+
         return inertia('Public/Archives', [
-            'archivedEvents' => $archivedEvents
+            'archivedEvents' => $archivedEvents,
+            'archivedMedalTallies' => $archivedMedalTallies
         ]);
     }
 

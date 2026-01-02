@@ -22,6 +22,9 @@ Route::get('/', [PublicController::class, 'home'])->name('public.home');
 
 // Public routes
 Route::get('/medal-tally', [PublicController::class, 'medalTally'])->name('public.medals');
+Route::get('/archived-medal-tallies', [PublicController::class, 'archivedMedalTallies'])->name('public.archived-medals');
+Route::get('/archived-medal-tallies/{id}', [PublicController::class, 'archivedMedalTallyDetails'])->name('public.archived-medal-details');
+Route::get('/archived-medal-tallies/{tallyId}/event/{eventId}', [PublicController::class, 'archivedMedalTallyEventDetails'])->name('public.archived-medal-event-details');
 Route::get('/archives', [PublicController::class, 'archives'])->name('public.archives');
 Route::get('/archives/{eventId}', [PublicController::class, 'archiveDetails'])->name('public.archive.details');
 

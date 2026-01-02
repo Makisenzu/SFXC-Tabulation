@@ -146,28 +146,62 @@ class MedalController extends Controller
 
     public function archiveMedalTally($id)
     {
-        $tally = MedalTally::findOrFail($id);
-        $tally->update([
-            'is_archived' => true,
-            'archived_at' => now()
-        ]);
+        $tally = MedalTally::with('events')->findOrFail($id);
         
-        return response()->json([
-            'message' => 'Medal Tally archived successfully'
-        ]);
+        DB::beginTransaction();
+        try {
+            // Archive the medal tally
+            $tally->update([
+                'is_archived' => true,
+                'archived_at' => now()
+            ]);
+            
+            // Archive all associated events
+            foreach ($tally->events as $event) {
+                $event->update(['is_active' => false]);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Medal Tally and associated events archived successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to archive medal tally'
+            ], 500);
+        }
     }
 
     public function unarchiveMedalTally($id)
     {
-        $tally = MedalTally::findOrFail($id);
-        $tally->update([
-            'is_archived' => false,
-            'archived_at' => null
-        ]);
+        $tally = MedalTally::with('events')->findOrFail($id);
         
-        return response()->json([
-            'message' => 'Medal Tally unarchived successfully'
-        ]);
+        DB::beginTransaction();
+        try {
+            // Unarchive the medal tally
+            $tally->update([
+                'is_archived' => false,
+                'archived_at' => null
+            ]);
+            
+            // Unarchive all associated events
+            foreach ($tally->events as $event) {
+                $event->update(['is_active' => true]);
+            }
+            
+            DB::commit();
+            
+            return response()->json([
+                'message' => 'Medal Tally and associated events unarchived successfully'
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'error' => 'Failed to unarchive medal tally'
+            ], 500);
+        }
     }
 
     public function printFullTally($id)

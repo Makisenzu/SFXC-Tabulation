@@ -89,14 +89,20 @@ class JudgeController extends Controller
                 ->select('id', 'round_no', 'is_active')
                 ->get();
 
-            // Optimized: Check existence efficiently
-            $hasTabulationData = Tabulation::where('user_id', $judge->id)
-                ->whereHas('round', function($query) use ($viewingRound) {
-                    $query->where('active_id', $viewingRound->id);
-                })
-                ->exists();
+            // Get all criteria for this active round (don't wait for tabulations)
+            $criteria = Criteria::where('active_id', $viewingRound->id)
+                ->where('is_active', 1)
+                ->select('id', 'criteria_desc', 'definition', 'percentage', 'max_percentage', 'active_id')
+                ->orderBy('id')
+                ->get();
     
-            if (!$hasTabulationData) {
+            // Get round IDs for this active round
+            $roundIds = DB::table('rounds')
+                ->where('active_id', $viewingRound->id)
+                ->pluck('id');
+            
+            // Check if there are any rounds at all
+            if ($roundIds->isEmpty()) {
                 return response()->json([
                     'success' => true,
                     'data' => [
@@ -120,8 +126,8 @@ class JudgeController extends Controller
                         'is_locked' => $isLocked,
                         'contestants' => [],
                         'criteria_summary' => [
-                            'total_criteria' => 0,
-                            'total_percentage' => 0
+                            'total_criteria' => $criteria->count(),
+                            'total_percentage' => $criteria->sum('percentage')
                         ],
                         'judge_info' => [
                             'judge_id' => $judge->id,
@@ -130,38 +136,14 @@ class JudgeController extends Controller
                     ]
                 ]);
             }
-    
-            // Optimized: Get criteria IDs that have tabulations using JOIN
-            $criteriaIds = DB::table('criterias')
-                ->join('tabulations', 'criterias.id', '=', 'tabulations.criteria_id')
-                ->join('rounds', 'tabulations.round_id', '=', 'rounds.id')
-                ->where('criterias.active_id', $viewingRound->id)
-                ->where('criterias.is_active', 1)
-                ->where('tabulations.user_id', $judge->id)
-                ->where('rounds.active_id', $viewingRound->id)
-                ->distinct()
-                ->pluck('criterias.id');
             
-            // Optimized: Select only needed columns and simplified query
-            $criteria = Criteria::whereIn('id', $criteriaIds)
-                ->select('id', 'criteria_desc', 'definition', 'percentage', 'max_percentage', 'active_id')
-                ->orderBy('id')
-                ->get();
-    
-            // Optimized: Get round IDs first to avoid nested whereHas
-            $roundIds = DB::table('rounds')
-                ->where('active_id', $viewingRound->id)
-                ->pluck('id');
-            
-            // Optimized: Get contestant IDs that have tabulations
+            // Get ALL contestant IDs from rounds (not just those with tabulations)
             $contestantIds = DB::table('rounds')
-                ->join('tabulations', 'rounds.id', '=', 'tabulations.round_id')
-                ->where('rounds.active_id', $viewingRound->id)
-                ->where('tabulations.user_id', $judge->id)
+                ->where('active_id', $viewingRound->id)
                 ->distinct()
-                ->pluck('rounds.contestant_id');
+                ->pluck('contestant_id');
             
-            // Optimized: Eager load with specific columns
+            // Get all contestants in this round with their round info (single query)
             $contestants = Contestant::whereIn('id', $contestantIds)
                 ->with(['rounds' => function($query) use ($viewingRound) {
                     $query->where('active_id', $viewingRound->id)
@@ -171,15 +153,14 @@ class JudgeController extends Controller
                 ->orderBy('sequence_no')
                 ->get();
     
-            // Optimized: Fetch scores with JOIN instead of whereHas
-            $existingScores = Tabulation::whereIn('round_id', $roundIds)
-                ->where('user_id', $judge->id)
-                ->with(['round' => function($query) {
-                    $query->select('id', 'contestant_id', 'active_id');
-                }])
-                ->select('id', 'round_id', 'criteria_id', 'score', 'is_lock')
+            // Fetch existing scores for this judge in a single optimized query
+            $existingScores = DB::table('tabulations')
+                ->join('rounds', 'tabulations.round_id', '=', 'rounds.id')
+                ->whereIn('tabulations.round_id', $roundIds)
+                ->where('tabulations.user_id', $judge->id)
+                ->select('tabulations.id', 'tabulations.criteria_id', 'tabulations.score', 'tabulations.is_lock', 'rounds.contestant_id')
                 ->get()
-                ->groupBy('round.contestant_id');
+                ->groupBy('contestant_id');
     
             $formattedData = [
                 'event' => [
@@ -202,22 +183,28 @@ class JudgeController extends Controller
                 'is_locked' => $isLocked,
                 'contestants' => $contestants->map(function($contestant) use ($existingScores, $criteria, $viewingRound, $isLocked) {
                     $contestantScores = $existingScores->get($contestant->id, collect());
-                    $round = $contestant->rounds->firstWhere('active_id', $viewingRound->id);
+                    $round = $contestant->rounds->first();
                     
-                    $criteriaWithScores = $criteria->map(function($criterion) use ($contestantScores, $isLocked) {
+                    $criteriaWithScores = [];
+                    $totalScore = 0;
+                    
+                    foreach ($criteria as $criterion) {
                         $scoreRecord = $contestantScores->firstWhere('criteria_id', $criterion->id);
+                        $score = $scoreRecord ? $scoreRecord->score : 0;
                         
-                        return [
+                        $criteriaWithScores[] = [
                             'id' => $criterion->id,
                             'criteria_desc' => $criterion->criteria_desc,
                             'definition' => $criterion->definition,
                             'percentage' => $criterion->percentage,
                             'max_percentage' => $criterion->max_percentage,
-                            'score' => $scoreRecord ? $scoreRecord->score : 0,
+                            'score' => $score,
                             'tabulation_id' => $scoreRecord ? $scoreRecord->id : null,
                             'is_lock' => $isLocked || ($scoreRecord ? $scoreRecord->is_lock : false)
                         ];
-                    });
+                        
+                        $totalScore += $score;
+                    }
     
                     return [
                         'id' => $contestant->id,
@@ -226,9 +213,9 @@ class JudgeController extends Controller
                         'sequence_no' => $contestant->sequence_no,
                         'round_id' => $round ? $round->id : null,
                         'criteria' => $criteriaWithScores,
-                        'total_score' => $criteriaWithScores->sum('score')
+                        'total_score' => $totalScore
                     ];
-                }),
+                })->values()->all(),
                 'criteria_summary' => [
                     'total_criteria' => $criteria->count(),
                     'total_percentage' => $criteria->sum('percentage')

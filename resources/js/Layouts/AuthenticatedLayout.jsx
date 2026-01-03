@@ -84,7 +84,7 @@ export default function AuthenticatedLayout({ header, children, auth: propAuth }
             {/* Desktop Sidebar */}
             <div className="hidden md:flex md:flex-col w-72 bg-white border-r border-gray-200">
                 {/* Logo Section */}
-                <div className="flex items-center gap-3 p-6 border-b border-gray-200">
+                <div className="flex items-center p-2 border-b border-gray-200">
                     <ApplicationLogo className="block h-10 w-auto fill-current text-gray-900" />
                     <div>
                         <h1 className="text-lg font-bold text-gray-900">SFXC</h1>

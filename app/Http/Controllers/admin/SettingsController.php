@@ -10,11 +10,11 @@ use Illuminate\Support\Facades\File;
 class SettingsController extends Controller
 {
     /**
-     * Get current application logo
+     * Get current event logo (for printing)
      */
     public function getLogo()
     {
-        $logoPath = $this->getCurrentLogoPath();
+        $logoPath = $this->getCurrentLogoPath('event-logo');
         
         return response()->json([
             'logo' => $logoPath
@@ -22,7 +22,7 @@ class SettingsController extends Controller
     }
 
     /**
-     * Upload and update application logo
+     * Upload and update event logo (for printing)
      */
     public function uploadLogo(Request $request)
     {
@@ -34,18 +34,18 @@ class SettingsController extends Controller
             // Get the uploaded file
             $file = $request->file('logo');
             
-            // Delete old logo if exists
-            $oldLogoPath = $this->getCurrentLogoPath();
+            // Delete old event logo if exists
+            $oldLogoPath = $this->getCurrentLogoPath('event-logo');
             if ($oldLogoPath && Storage::disk('public')->exists($oldLogoPath)) {
                 Storage::disk('public')->delete($oldLogoPath);
             }
 
-            // Store new logo
-            $filename = 'app-logo.' . $file->getClientOriginalExtension();
+            // Store new event logo
+            $filename = 'event-logo.' . $file->getClientOriginalExtension();
             $path = $file->storeAs('logos', $filename, 'public');
 
             return response()->json([
-                'message' => 'Logo uploaded successfully',
+                'message' => 'Event logo uploaded successfully',
                 'logo' => $path
             ]);
         } catch (\Exception $e) {
@@ -56,14 +56,14 @@ class SettingsController extends Controller
     }
 
     /**
-     * Get current logo path (check for app-logo.* in storage)
+     * Get current logo path (check for logo.* in storage)
      */
-    private function getCurrentLogoPath()
+    private function getCurrentLogoPath($prefix = 'event-logo')
     {
         $extensions = ['png', 'jpg', 'jpeg', 'gif'];
         
         foreach ($extensions as $ext) {
-            $path = 'logos/app-logo.' . $ext;
+            $path = 'logos/' . $prefix . '.' . $ext;
             if (Storage::disk('public')->exists($path)) {
                 return $path;
             }

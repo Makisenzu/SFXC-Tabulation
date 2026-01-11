@@ -97,9 +97,9 @@ export default function SettingsPanel() {
         <div className="bg-white rounded-lg shadow-md overflow-hidden">
             {/* Header */}
             <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
-                <h2 className="text-xl font-semibold text-gray-800">Application Logo</h2>
+                <h2 className="text-xl font-semibold text-gray-800">Event Logo for Printing</h2>
                 <p className="text-sm text-gray-600 mt-1">
-                    Upload a custom logo for your application. Recommended size: 200x200px (max 2MB)
+                    Upload an event logo to be printed on results and cue cards (right side). The permanent SFXC logo will appear on the left. Recommended size: 200x200px (max 2MB)
                 </p>
             </div>
 
@@ -108,7 +108,7 @@ export default function SettingsPanel() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Current Logo */}
                     <div>
-                        <h3 className="text-sm font-medium text-gray-700 mb-3">Current Logo</h3>
+                        <h3 className="text-sm font-medium text-gray-700 mb-3">Current Event Logo</h3>
                         <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 flex items-center justify-center bg-gray-50">
                             {loading ? (
                                 <div className="text-gray-400">

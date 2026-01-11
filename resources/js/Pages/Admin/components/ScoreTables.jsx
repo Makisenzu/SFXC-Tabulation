@@ -268,18 +268,18 @@ const ScoreTables = () => {
         per_page: 10,
         total: 0
     });
-    const [customLogo, setCustomLogo] = useState(appLogo);
+    const [eventLogo, setEventLogo] = useState(null);
 
-    // Fetch custom logo on component mount
+    // Fetch event logo on component mount
     useEffect(() => {
         fetch('/api/settings/logo')
             .then(res => res.json())
             .then(data => {
                 if (data.logo) {
-                    setCustomLogo(`/storage/${data.logo}`);
+                    setEventLogo(`/storage/${data.logo}`);
                 }
             })
-            .catch(err => console.error('Error loading custom logo:', err));
+            .catch(err => console.error('Error loading event logo:', err));
     }, []);
 
     // Fetch events on component mount
@@ -1049,9 +1049,6 @@ const ScoreTables = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
         const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
 
-        // Use custom logo if available
-        const logoToUse = customLogo;
-
         // Create print window
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
@@ -1095,17 +1092,19 @@ const ScoreTables = () => {
                         max-width: 100%;
                         position: relative;
                     }
-                    .logo {
-                        float: left;
-                        margin-right: 20px;
+                    .header-logos {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
                         margin-bottom: 20px;
+                    }
+                    .logo {
                         width: 80px;
                         height: auto;
                     }
                     .header-content {
                         text-align: center;
                         margin-bottom: 30px;
-                        overflow: hidden;
                     }
                     h1 {
                         text-align: center;
@@ -1136,11 +1135,13 @@ const ScoreTables = () => {
                 </style>
             </head>
             <body>
-                <img src="${logoToUse}" alt="Logo" class="logo" />
+                <div class="header-logos">
+                    <img src="${appLogo}" alt="SFXC Logo" class="logo" />
+                    ${eventLogo ? `<img src="${eventLogo}" alt="Event Logo" class="logo" />` : ''}
+                </div>
                 <div class="header-content">
                     <h1>GENERAL TABULATED RESULT</h1>
                 </div>
-                <div style="clear: both;"></div>
                 
                 <table>
                     <thead>
@@ -1224,9 +1225,6 @@ const ScoreTables = () => {
         const eventName = events.find(e => e.id == selectedEvent)?.name || 'Event';
         const roundName = rounds.find(r => r.round_no == selectedRound)?.round_no || selectedRound;
 
-        // Use custom logo if available
-        const logoToUse = customLogo;
-
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
             <!DOCTYPE html>
@@ -1269,17 +1267,19 @@ const ScoreTables = () => {
                         max-width: 100%;
                         position: relative;
                     }
-                    .logo {
-                        float: left;
-                        margin-right: 20px;
+                    .header-logos {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
                         margin-bottom: 20px;
+                    }
+                    .logo {
                         width: 80px;
                         height: auto;
                     }
                     .header-content {
                         text-align: center;
                         margin-bottom: 30px;
-                        overflow: hidden;
                     }
                     h1 {
                         text-align: center;
@@ -1317,11 +1317,13 @@ const ScoreTables = () => {
                 </style>
             </head>
             <body>
-                <img src="${logoToUse}" alt="Logo" class="logo" />
+                <div class="header-logos">
+                    <img src="${appLogo}" alt="SFXC Logo" class="logo" />
+                    ${eventLogo ? `<img src="${eventLogo}" alt="Event Logo" class="logo" />` : ''}
+                </div>
                 <div class="header-content">
                     <h1>SPECIAL AWARDS</h1>
                 </div>
-                <div style="clear: both;"></div>
                 
                 ${specialAwardsData.map(award => `
                     <h2 style="text-align: center; margin: 20px 0 15px 0; font-size: 16px;">Best in ${award.criteriaName}</h2>

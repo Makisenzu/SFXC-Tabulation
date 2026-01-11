@@ -1,7 +1,22 @@
 import { Head } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import sfxcLogo from '@/images/printLogo.jpg';
 
 export default function PrintCueCards({ tally }) {
+    const [eventLogo, setEventLogo] = useState(null);
+
+    useEffect(() => {
+        // Fetch event logo
+        fetch('/api/settings/logo')
+            .then(res => res.json())
+            .then(data => {
+                if (data.logo) {
+                    setEventLogo(`/storage/${data.logo}`);
+                }
+            })
+            .catch(err => console.error('Error loading event logo:', err));
+    }, []);
+
     useEffect(() => {
         window.print();
     }, []);
@@ -132,16 +147,23 @@ export default function PrintCueCards({ tally }) {
                     return (
                         <div key={event.id} className="cue-card bg-white">
                             {/* Card Header */}
-                            <div className="text-center mb-8 pb-4 border-b-4 border-gray-800">
-                                <img src={customLogo} alt="Logo" className="mx-auto mb-4" style={{ width: '100px', height: 'auto' }} />
-                                <div className="text-sm text-gray-500 mb-2">
-                                    {tally.tally_title}
+                            <div className="mb-8 pb-4 border-b-4 border-gray-800">
+                                <div className="flex justify-between items-start mb-4">
+                                    <img src={sfxcLogo} alt="SFXC Logo" style={{ width: '100px', height: 'auto' }} />
+                                    {eventLogo && (
+                                        <img src={eventLogo} alt="Event Logo" style={{ width: '100px', height: 'auto' }} />
+                                    )}
                                 </div>
-                                <h1 className="text-5xl font-bold text-gray-900 mb-2">
-                                    {event.event_name}
-                                </h1>
-                                <div className="text-lg text-gray-600">
-                                    Competition #{eventIndex + 1} of {tally.events.length}
+                                <div className="text-center">
+                                    <div className="text-sm text-gray-500 mb-2">
+                                        {tally.tally_title}
+                                    </div>
+                                    <h1 className="text-5xl font-bold text-gray-900 mb-2">
+                                        {event.event_name}
+                                    </h1>
+                                    <div className="text-lg text-gray-600">
+                                        Competition #{eventIndex + 1} of {tally.events.length}
+                                    </div>
                                 </div>
                             </div>
 

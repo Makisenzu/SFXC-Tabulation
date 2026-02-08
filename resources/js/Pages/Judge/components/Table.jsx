@@ -94,7 +94,8 @@ const Table = ({ selectedContestant }) => {
 
     useEffect(() => {
         if (selectedContestant) {
-            setLoading(true);
+            // Don't show loading spinner - just update data seamlessly
+            // setLoading(true); // Removed to prevent flicker
             
             // Clear pending timeouts to prevent stale saves
             if (timeoutRef.current) {
@@ -102,54 +103,51 @@ const Table = ({ selectedContestant }) => {
                 timeoutRef.current = null;
             }
             
-            // Use setTimeout to defer rendering and prevent blocking
-            const timer = setTimeout(() => {
-                if (selectedContestant.criteria && selectedContestant.criteria.length > 0) {
-                    setCriteria(selectedContestant.criteria);
+            // Update data immediately (no setTimeout needed)
+            if (selectedContestant.criteria && selectedContestant.criteria.length > 0) {
+                setCriteria(selectedContestant.criteria);
+                
+                const initialScores = {};
+                selectedContestant.criteria.forEach(criterion => {
+                    // Handle score properly - backend now returns formatted string or empty string
+                    let score = criterion.score || '';
                     
-                    const initialScores = {};
-                    selectedContestant.criteria.forEach(criterion => {
-                        // Handle score properly - backend now returns formatted string or empty string
-                        let score = criterion.score || '';
-                        
-                        // If score is a number (backward compatibility), format it
-                        if (typeof score === 'number') {
-                            score = score === 0 ? '' : score.toFixed(2);
-                        }
-                        
-                        // If score is a string and not empty, ensure proper formatting
-                        if (typeof score === 'string' && score !== '' && score !== '0' && score !== '0.00') {
-                            const numScore = parseFloat(score);
-                            if (!isNaN(numScore) && numScore > 0) {
-                                score = numScore.toFixed(2);
-                            } else {
-                                score = '';
-                            }
-                        } else if (score === '0' || score === '0.00') {
+                    // If score is a number (backward compatibility), format it
+                    if (typeof score === 'number') {
+                        score = score === 0 ? '' : score.toFixed(2);
+                    }
+                    
+                    // If score is a string and not empty, ensure proper formatting
+                    if (typeof score === 'string' && score !== '' && score !== '0' && score !== '0.00') {
+                        const numScore = parseFloat(score);
+                        if (!isNaN(numScore) && numScore > 0) {
+                            score = numScore.toFixed(2);
+                        } else {
                             score = '';
                         }
-                        
-                        initialScores[criterion.id] = score;
-                        lastSavedScores.current[criterion.id] = score;
-                    });
-                    setScores(initialScores);
-                } else {
-                    console.log('🔴 No criteria found in contestant data');
-                    setCriteria([]);
-                    setScores({});
-                }
-                
-                if (selectedContestant.round_id) {
-                    setActiveRound({
-                        id: selectedContestant.round_id,
-                        round_number: selectedContestant.round_number || 1
-                    });
-                }
-                
-                setLoading(false);
-            }, 0);
-
-            return () => clearTimeout(timer);
+                    } else if (score === '0' || score === '0.00') {
+                        score = '';
+                    }
+                    
+                    initialScores[criterion.id] = score;
+                    lastSavedScores.current[criterion.id] = score;
+                });
+                setScores(initialScores);
+            } else {
+                console.log('🔴 No criteria found in contestant data');
+                setCriteria([]);
+                setScores({});
+            }
+            
+            if (selectedContestant.round_id) {
+                setActiveRound({
+                    id: selectedContestant.round_id,
+                    round_number: selectedContestant.round_number || 1
+                });
+            }
+            
+            // Don't set loading to false - we never set it to true
+            // setLoading(false);
         } else {
             setCriteria([]);
             setScores({});

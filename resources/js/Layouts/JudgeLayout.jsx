@@ -1,7 +1,7 @@
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import { usePage } from '@inertiajs/react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FaUserGear } from "react-icons/fa6";
 import { TbLogout } from "react-icons/tb";
 
@@ -21,13 +21,22 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
     const [currentChannel, setCurrentChannel] = useState(null);
     const [notification, setNotification] = useState(null);
     const [showNotificationModal, setShowNotificationModal] = useState(false);
+    const lastFetchTime = useRef(0);
+    const fetchCooldown = 2000; // Only refetch if 2 seconds have passed
 
     const toggleMobileSidebar = () => {
         setMobileSidebarOpen(!mobileSidebarOpen);
     };
 
     // Fetch tabulation data from API
-    const fetchTabulationData = useCallback(async (roundNo = null) => {
+    const fetchTabulationData = useCallback(async (roundNo = null, force = false) => {
+        // Check if we should use cached data (unless forced)
+        const now = Date.now();
+        if (!force && (now - lastFetchTime.current) < fetchCooldown) {
+            console.log('⚡ Using cached data (fetch cooldown active)');
+            return tabulationData;
+        }
+        
         try {
             setLoading(true);
             
@@ -42,16 +51,19 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
             
             if (result.success) {
                 setTabulationData(result.data);
+                lastFetchTime.current = now;
+                return result.data;
             } else {
                 throw new Error(result.error || 'Failed to fetch tabulation data');
             }
         } catch (err) {
             console.error('Error fetching tabulation data:', err);
             setError(err.message);
+            return null;
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [tabulationData]);
 
     // Initial data fetch on component mount
     useEffect(() => {
@@ -139,7 +151,28 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
     const eventName = tabulationData?.event?.event_name;
 
     const handleContestantSelect = useCallback(async (contestant) => {
-        // Refetch data to get latest scores before selecting contestant
+        // Check if we can use cached data
+        const now = Date.now();
+        const canUseCache = (now - lastFetchTime.current) < fetchCooldown;
+        
+        if (canUseCache && tabulationData) {
+            // Use cached data - instant response!
+            console.log('⚡ Fast navigation - using cached data');
+            const cachedContestant = tabulationData.contestants?.find(c => c.id === contestant.id);
+            if (onContestantSelect && cachedContestant) {
+                onContestantSelect(cachedContestant);
+                return;
+            }
+        }
+        
+        // Show the new contestant immediately with cached/stale data (no flicker!)
+        // Then fetch fresh data in the background
+        if (onContestantSelect) {
+            const currentContestant = tabulationData?.contestants?.find(c => c.id === contestant.id) || contestant;
+            onContestantSelect(currentContestant);
+        }
+        
+        // Fetch fresh data in background (silently updates)
         try {
             const url = viewingRound && viewingRound !== currentRound 
                 ? `/judge/tabulation-data?round_no=${viewingRound}` 
@@ -150,7 +183,8 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
                 const result = await response.json();
                 if (result.success) {
                     setTabulationData(result.data);
-                    // Find the updated contestant from fresh data
+                    lastFetchTime.current = Date.now();
+                    // Silently update to fresh data if still viewing same contestant
                     const updatedContestant = result.data.contestants?.find(c => c.id === contestant.id);
                     if (onContestantSelect && updatedContestant) {
                         onContestantSelect(updatedContestant);
@@ -159,12 +193,9 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
             }
         } catch (error) {
             console.error('Error refreshing contestant data:', error);
-            // Fallback to original contestant if fetch fails
-            if (onContestantSelect) {
-                onContestantSelect(contestant);
-            }
+            // Already showing something, so no need to handle error visually
         }
-    }, [onContestantSelect, viewingRound, currentRound]);
+    }, [onContestantSelect, viewingRound, currentRound, tabulationData]);
 
     const handleRoundChange = (roundNo) => {
         fetchTabulationData(roundNo);

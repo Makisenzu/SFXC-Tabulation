@@ -190,7 +190,11 @@ class JudgeController extends Controller
                     
                     foreach ($criteria as $criterion) {
                         $scoreRecord = $contestantScores->firstWhere('criteria_id', $criterion->id);
-                        $score = $scoreRecord ? $scoreRecord->score : 0;
+                        // Format score properly - return as formatted decimal string or empty string
+                        $score = '';
+                        if ($scoreRecord && $scoreRecord->score && $scoreRecord->score > 0) {
+                            $score = number_format($scoreRecord->score, 2, '.', '');
+                        }
                         
                         $criteriaWithScores[] = [
                             'id' => $criterion->id,
@@ -203,7 +207,7 @@ class JudgeController extends Controller
                             'is_lock' => $isLocked || ($scoreRecord ? $scoreRecord->is_lock : false)
                         ];
                         
-                        $totalScore += $score;
+                        $totalScore += $scoreRecord && $scoreRecord->score ? floatval($scoreRecord->score) : 0;
                     }
     
                     return [

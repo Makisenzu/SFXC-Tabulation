@@ -94,6 +94,13 @@ const Table = ({ selectedContestant }) => {
 
     useEffect(() => {
         if (selectedContestant) {
+            setLoading(true);
+            
+            // Clear pending timeouts to prevent stale saves
+            if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+            }
             
             // Use setTimeout to defer rendering and prevent blocking
             const timer = setTimeout(() => {
@@ -102,7 +109,26 @@ const Table = ({ selectedContestant }) => {
                     
                     const initialScores = {};
                     selectedContestant.criteria.forEach(criterion => {
-                        const score = criterion.score || '';
+                        // Handle score properly - backend now returns formatted string or empty string
+                        let score = criterion.score || '';
+                        
+                        // If score is a number (backward compatibility), format it
+                        if (typeof score === 'number') {
+                            score = score === 0 ? '' : score.toFixed(2);
+                        }
+                        
+                        // If score is a string and not empty, ensure proper formatting
+                        if (typeof score === 'string' && score !== '' && score !== '0' && score !== '0.00') {
+                            const numScore = parseFloat(score);
+                            if (!isNaN(numScore) && numScore > 0) {
+                                score = numScore.toFixed(2);
+                            } else {
+                                score = '';
+                            }
+                        } else if (score === '0' || score === '0.00') {
+                            score = '';
+                        }
+                        
                         initialScores[criterion.id] = score;
                         lastSavedScores.current[criterion.id] = score;
                     });
@@ -110,6 +136,7 @@ const Table = ({ selectedContestant }) => {
                 } else {
                     console.log('🔴 No criteria found in contestant data');
                     setCriteria([]);
+                    setScores({});
                 }
                 
                 if (selectedContestant.round_id) {
@@ -128,6 +155,7 @@ const Table = ({ selectedContestant }) => {
             setScores({});
             setActiveRound(null);
             lastSavedScores.current = {};
+            setLoading(false);
         }
     }, [selectedContestant?.id]);
 

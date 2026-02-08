@@ -1,1 +1,0 @@
-import{c as t,j as p}from"./app-CPzmvJ56.js";const c="/build/assets/logo-BZmYTpjy.png";function r(s){const{appLogo:o}=t().props,a=o?`/storage/${o}`:c;return p.jsx("img",{src:a,alt:"App Logo",className:s.className||"h-20 w-auto"})}export{r as A};

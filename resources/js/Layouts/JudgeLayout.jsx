@@ -126,12 +126,6 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
         return `/storage/${photoPath}`;
     };
 
-    const handleContestantSelect = useCallback((contestant) => {
-        if (onContestantSelect) {
-            onContestantSelect(contestant);
-        }
-    }, [onContestantSelect]);
-
     const handleRefresh = () => {
         setError(null);
         fetchTabulationData();
@@ -143,6 +137,34 @@ export default function JudgeLayout({ header, children, auth: propAuth, onContes
     const availableRounds = tabulationData?.available_rounds || [];
     const isLocked = tabulationData?.is_locked || false;
     const eventName = tabulationData?.event?.event_name;
+
+    const handleContestantSelect = useCallback(async (contestant) => {
+        // Refetch data to get latest scores before selecting contestant
+        try {
+            const url = viewingRound && viewingRound !== currentRound 
+                ? `/judge/tabulation-data?round_no=${viewingRound}` 
+                : '/judge/tabulation-data';
+            const response = await fetch(url);
+            
+            if (response.ok) {
+                const result = await response.json();
+                if (result.success) {
+                    setTabulationData(result.data);
+                    // Find the updated contestant from fresh data
+                    const updatedContestant = result.data.contestants?.find(c => c.id === contestant.id);
+                    if (onContestantSelect && updatedContestant) {
+                        onContestantSelect(updatedContestant);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing contestant data:', error);
+            // Fallback to original contestant if fetch fails
+            if (onContestantSelect) {
+                onContestantSelect(contestant);
+            }
+        }
+    }, [onContestantSelect, viewingRound, currentRound]);
 
     const handleRoundChange = (roundNo) => {
         fetchTabulationData(roundNo);

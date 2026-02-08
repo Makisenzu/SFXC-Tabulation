@@ -9,7 +9,6 @@ export default function UserSection({ auth }) {
         <AuthenticatedLayout 
             header={
                 <div className="flex items-center space-x-2">
-                    <FaUsers className="text-gray-600" />
                     <span>User Management</span>
                 </div>
             } 

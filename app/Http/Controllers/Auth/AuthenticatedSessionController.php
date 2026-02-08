@@ -38,7 +38,7 @@ class AuthenticatedSessionController extends Controller
             1 => redirect()->intended(route('admin.dashboard')),
             2 => redirect()->intended(route('judge.dashboard')),
             3 => redirect()->intended(route('facilitator.dashboard')),
-            default => redirect()->intended(route('home'))
+            default => redirect()->intended(route('public.home'))
         };
     }
 

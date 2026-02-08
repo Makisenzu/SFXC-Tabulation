@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'appEnv' => config('app.env'),
             'appLogo' => $this->getAppLogo(),
+            'csrf_token' => csrf_token(), // Add CSRF token to shared props
         ];
     }
 

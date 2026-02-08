@@ -303,31 +303,20 @@ const ScoreTables = () => {
 
     // Setup real-time listener for score updates
     useEffect(() => {
-        console.log('🔍 Broadcasting setup check:', {
-            selectedEvent,
-            selectedRound,
-            hasEcho: !!window.Echo,
-            echoType: window.Echo?.constructor?.name
-        });
 
         if (selectedEvent && selectedRound && window.Echo) {
             const channelName = `score-updates.${selectedEvent}.${selectedRound}`;
             
-            console.log('🟡 Attempting to subscribe to:', channelName);
 
             try {
                 const channel = window.Echo.private(channelName)
                     .listen('.score.updated', (event) => {
-                        console.log('🟢 Score update received:', event);
                         
                         // Update the specific score in the scores array
                         if (event.score) {
                             updateSingleScore(event.score);
                         }
                     });
-
-                console.log('✅ Successfully subscribed to channel:', channelName);
-
                 // Cleanup on unmount or when event/round changes
                 return () => {
                     console.log('🔴 Leaving channel:', channelName);
@@ -386,7 +375,6 @@ const ScoreTables = () => {
                 updatedScores.push(newScore);
             }
 
-            console.log('✅ Score updated in state:', newScore);
             return updatedScores;
         });
     };
@@ -491,8 +479,6 @@ const ScoreTables = () => {
                 alert('Failed to send notification. Please try again.');
             }
         } catch (error) {
-            console.error('Error sending notification:', error);
-            console.error('Error response:', error.response?.data);
             alert(`Failed to send notification: ${error.response?.data?.message || error.message}`);
         }
     };
@@ -562,7 +548,6 @@ const ScoreTables = () => {
                 setTempScore('');
             }
         } catch (error) {
-            console.error('Error updating score:', error);
             alert(`Failed to update score: ${error.response?.data?.message || error.message}`);
         }
     };
@@ -635,7 +620,6 @@ const ScoreTables = () => {
                     alert(response.data.message || 'Failed to import scores');
                 }
             } catch (error) {
-                console.error('Error importing scores:', error);
                 alert(`Failed to import scores: ${error.response?.data?.message || error.message}`);
             } finally {
                 setImportingScores(false);
@@ -726,13 +710,7 @@ const ScoreTables = () => {
     // Print General Tabulated Result
     const printGeneralTabulation = () => {
         // Debug: Check data availability
-        console.log('Print Debug:', {
-            contestants: contestants.length,
-            judges: judges.length,
-            criteria: criteria.length,
-            scores: scores.length,
-            contestantsData: contestants
-        });
+
 
         if (contestants.length === 0) {
             alert('No contestants data available. Please select an event and round first.');
@@ -746,7 +724,6 @@ const ScoreTables = () => {
 
         // Calculate general tabulation data
         const data = contestants.map(contestant => {
-            console.log('Processing contestant:', contestant);
             
             const judgeData = judges.map(judge => {
                 const judgeScores = scores.filter(
@@ -784,7 +761,6 @@ const ScoreTables = () => {
             };
         });
 
-        console.log('General Data:', data);
 
         // Calculate ranks for each judge
         judges.forEach(judge => {

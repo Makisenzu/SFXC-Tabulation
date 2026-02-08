@@ -22,7 +22,7 @@ class DatabaseSeeder extends Seeder
         User::create([
             'role_id' => $adminRole->id,
             'username' => 'admin',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('12345678'),
             'is_active' => 1
         ]);
 
@@ -126,7 +126,7 @@ class DatabaseSeeder extends Seeder
 
         $this->command->info('✅ Database seeded successfully!');
         $this->command->info('📊 Created: 3 Roles, 4 Users, 3 Events, 15 Contestants');
-        $this->command->info('🔐 Admin credentials: username: admin, password: password');
+        $this->command->info('🔐 Admin credentials: username: admin, password: 12345678');
         $this->command->info('🔐 Judge credentials: username: judge1/judge2, password: password');
         $this->command->info('🔐 Facilitator credentials: username: facilitator, password: password');
     }

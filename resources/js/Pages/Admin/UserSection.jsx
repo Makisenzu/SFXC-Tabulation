@@ -1,7 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import UserTable from './components/UserTable';
 import { Head } from '@inertiajs/react';
-import { FaUsers } from 'react-icons/fa';
 
 export default function UserSection({ auth }) {
 
